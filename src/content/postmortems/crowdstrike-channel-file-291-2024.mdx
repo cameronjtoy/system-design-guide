@@ -1,0 +1,52 @@
+---
+title: CrowdStrike's faulty update crashes 8.5 million Windows machines
+summary: A security content update was pushed to every CrowdStrike Falcon sensor at once. A mismatch between 21 expected fields and 20 supplied ones caused an out-of-bounds read in kernel code, and Windows machines crashed on boot.
+company: CrowdStrike
+date: 2024-07-19
+duration: 78 minutes until the bad file was replaced; days to weeks of manual recovery
+impact: Microsoft estimated 8.5 million Windows devices crashed into a boot loop, disrupting airlines, hospitals, banks, broadcasters and emergency services worldwide. Many machines needed hands-on repair.
+principles: [progressive-delivery, static-stability, graceful-degradation]
+tags: [kernel, content-update, canary, global-rollout, input-validation]
+sources:
+  - title: Channel File 291 Incident Root Cause Analysis (CrowdStrike, PDF)
+    url: https://crowdstrike.com/wp-content/uploads/2024/08/Channel-File-291-Incident-Root-Cause-Analysis-08.06.2024.pdf
+  - title: "Channel File 291 Incident: Root Cause Analysis is Available"
+    url: https://www.crowdstrike.com/en-us/blog/channel-file-291-rca-available/
+---
+
+## What happened
+
+CrowdStrike Falcon is endpoint security software that runs a sensor inside the Windows kernel. Besides software releases, CrowdStrike ships frequent **"Rapid Response Content"** updates, configuration files that tell the sensor what behaviour to look for, so customers are protected against new threats within hours.
+
+At 04:09 UTC on July 19, 2024, CrowdStrike released a content update (Channel File 291) to all Windows sensors that were online. Machines that received it crashed with a blue screen and, because the sensor loads at boot, crashed again on every restart. CrowdStrike reverted the file at 05:27 UTC, but machines that had already crashed couldn't download the fix.
+
+## Root cause
+
+The update used a template type for inspecting inter-process communication that had been added months earlier.
+
+- The **template type defined 21 input fields**, but the sensor code that fed it **supplied only 20 values**.
+- Earlier content using this template had a wildcard in the 21st field, so the missing value was never read and tests passed.
+- The July 19 content was the first to put a real matching criterion in the 21st field. When the sensor evaluated it, it read past the end of its input array: an **out-of-bounds memory read** in kernel mode, which crashes Windows.
+
+Several layers missed it: the content validator didn't check that the number of fields matched, the tests didn't exercise a non-wildcard 21st field, and, most importantly, **content updates were deployed to all sensors at once** rather than gradually.
+
+## Why recovery was so slow
+
+A machine stuck in a boot loop can't receive a fix over the network. In many cases IT staff had to boot each machine into safe mode or a recovery environment and delete the bad file by hand, and machines with BitLocker disk encryption needed their recovery keys first. Some organizations took days or weeks to repair every device.
+
+## What changed
+
+- **Staged deployment for Rapid Response Content:** canary deployments first, then progressively larger rings, with monitoring between stages.
+- **Customer control** over when content updates are applied, including the option to delay them.
+- Validation that checks the number of input fields, plus runtime bounds checks in the sensor.
+- Additional testing for content, including fuzzing and tests with non-wildcard values in every field.
+- Independent third-party reviews of the sensor code and release process.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Configuration is code.** "It's just a content file" bypassed the gradual rollout that software releases had. Any change that alters running behaviour needs canaries and staged rollout.
+- **Blast radius beats speed.** Even an hour of canarying on a small fraction of machines would have caught this.
+- **Code that can't fail safe should fail small.** Kernel-level code that crashes the OS needs strict input validation and bounds checks, and ideally a way to skip bad content after repeated crashes.
+- **Plan recovery for machines you can't reach.** If a failure prevents the fix from being delivered, recovery becomes manual, and slow.
+</Callout>

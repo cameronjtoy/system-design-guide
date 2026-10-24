@@ -1,0 +1,69 @@
+---
+title: Chaos engineering
+summary: Chaos engineering deliberately injects failures, such as killed servers, added latency or lost zones, into a system in controlled experiments, to find weaknesses before real incidents find them for you.
+difficulty: intermediate
+order: 8
+tags: [chaos-engineering, chaos-monkey, game-days, fault-injection, resilience]
+companies: [Netflix, Amazon, Google]
+related: [observability, graceful-degradation, static-stability, progressive-delivery, backups-and-disaster-recovery]
+sources:
+  - title: Principles of Chaos Engineering
+    url: https://principlesofchaos.org/
+  - title: The Netflix Simian Army (Netflix Tech Blog, 2011)
+    url: https://techblog.netflix.com/2011/07/netflix-simian-army.html
+---
+
+## The problem it solves
+
+Teams design for failure: replicas, failover, retries, fallbacks. But those mechanisms rarely run, so they quietly break. A config drifts, a timeout is set wrong, a fallback throws an exception, a "redundant" component turns out to share a dependency. You find out during a real outage, at the worst possible time.
+
+Chaos engineering exercises failure handling on purpose, in controlled conditions, so you find these gaps first.
+
+## How it works
+
+### The experiment loop
+
+1. **Define steady state** with a user-facing metric (orders per minute, successful stream starts).
+2. **Hypothesize** it won't change when a specific failure happens.
+3. **Inject the failure** into a small, controlled scope.
+4. **Compare** against a control group. If steady state holds, confidence grows; if not, you've found a weakness to fix.
+5. **Stop automatically** if the impact exceeds a limit.
+
+### What to inject
+
+| Failure | Tests |
+|---|---|
+| Kill instances or containers | Redundancy, auto-replacement, statelessness |
+| Add latency to a dependency | Timeouts, circuit breakers, fallbacks |
+| Return errors from a dependency | Retry logic, graceful degradation |
+| Lose a zone or region | Failover, capacity headroom, static stability |
+| Exhaust CPU, memory or disk | Resource limits, alerting |
+| Partition the network | Leader election, split-brain protection |
+
+### Game days
+
+Not all chaos needs automation. **Game days** are scheduled exercises where a team simulates a major failure (a region outage, a database loss) and practises the response, including the human side: runbooks, communication and decision-making.
+
+## Trade-offs
+
+- **It can hurt users** if experiments are too large. Start in staging, then in production with tiny blast radius, during business hours, with an abort button.
+- **Needs good observability** to tell whether an experiment caused harm.
+- **Organizational buy-in:** breaking production on purpose needs trust, clear rules and leadership support.
+- **Not a substitute for design:** chaos experiments reveal weaknesses; engineers still have to fix them.
+
+## In the real world
+
+<Callout type="example" title="Netflix's Simian Army">
+Netflix created Chaos Monkey to randomly terminate production instances during business hours, forcing every service to tolerate instance loss. It expanded to Chaos Gorilla (losing an availability zone), Latency Monkey (injecting delays) and Chaos Kong (evacuating an entire AWS region), then formalized the practice on principlesofchaos.org. See [Netflix invents chaos engineering](/case-studies/netflix-chaos-engineering).
+</Callout>
+
+The postmortems show what untested recovery looks like: GitLab's backups that had never been restored, S3's subsystems that hadn't been fully restarted in years, and Facebook's out-of-band access that didn't work when the whole backbone was down. Regular exercises would have surfaced each one. See [GitLab deletes its production database](/postmortems/gitlab-database-deletion-2017) and [Facebook disappears from the internet](/postmortems/facebook-bgp-dns-2021).
+
+## Interview angle
+
+<Callout type="interview">
+After presenting a resilient design, mention how you'd verify it: "we'd run regular game days for zone loss, and automated experiments that inject latency into dependencies to check our timeouts and fallbacks."
+</Callout>
+
+- Running chaos experiments without monitoring or an abort switch.
+- Testing only in staging, which never behaves quite like production.

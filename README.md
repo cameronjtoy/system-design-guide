@@ -13,7 +13,7 @@ npm install
 npm run dev            # http://localhost:5173/system-design-guide/
 npm run build          # validate content, typecheck, build to dist/
 npm run preview        # serve the production build
-npm run check:content  # validate frontmatter and cross-links only
+npm run check:content  # validate frontmatter and cross-links (add -- --strict to fail on warnings)
 ```
 
 Requires Node 22.18 or newer (the content scripts are TypeScript run directly by Node).
@@ -74,12 +74,33 @@ Recommended sections: *What happened*, *Root cause*, *What changed*, *Lessons*.
 
 `src/content/case-studies/<slug>.mdx` with `company`, `year` (number) and `principles` in place of the postmortem fields.
 
+### Practice problems
+
+`src/content/practice/<slug>.mdx` with `difficulty`, `order` and `principles`. Recommended sections: *The problem*, *Requirements*, *Estimate the scale*, hints, *A reference design*, *Deep dives and trade-offs*, *What interviewers look for*. Wrap hints and solutions in `<Reveal title="Hint 1: …">…</Reveal>` (leave a blank line after the opening tag so Markdown inside it renders).
+
+### Learning paths
+
+`src/content/paths.ts` defines the paths at `/#/paths`. Each step is `"<collection>/<slug>"`, for example `"principles/caching-strategies"` or `"practice/design-chat-app"`. Steps are validated by `check:content`.
+
+### Reading list
+
+`src/content/reading.ts` holds the curated links shown at `/#/reading`, grouped into engineering blogs, incident report collections, papers, books and UI design systems. Prefer primary sources written by the people who built the system.
+
 ### Components available in MDX
 
 - `<Callout type="tip | example | warning | interview | note" title="Optional">…</Callout>`
 - A ` ```mermaid ` code block renders as a diagram.
 - Links starting with `/` (e.g. `[sharding](/principles/sharding-and-partitioning)`) navigate inside the app.
+- `<Reveal title="…">…</Reveal>` for collapsible hints and solutions.
 - Tables with three or more columns turn into stacked cards on phones.
+
+### Validation
+
+`npm run build` runs `check:content --strict`, so any reference to a page that doesn't exist (in `related`, `principles`, internal links or learning paths) fails the build.
+
+### Progress tracking
+
+"Mark as learned" state is stored in the reader's browser (`localStorage`) through `src/lib/progress.ts`; nothing is sent to a server.
 
 ### Sources and copyright
 

@@ -1,0 +1,88 @@
+---
+title: Transactions and isolation levels
+summary: Transactions group operations so they succeed or fail together. Isolation levels decide how much concurrent transactions can see of each other, and weaker levels allow surprising anomalies.
+difficulty: advanced
+order: 6
+tags: [acid, isolation, serializable, snapshot-isolation, read-committed, anomalies, locking]
+companies: [Stripe, Shopify]
+related: [consistency-models, sql-vs-nosql, distributed-transactions-and-sagas, idempotency, sharding-and-partitioning]
+sources:
+  - title: Transaction Isolation (PostgreSQL docs)
+    url: https://www.postgresql.org/docs/current/transaction-iso.html
+  - title: Consistency models (Jepsen)
+    url: https://jepsen.io/consistency
+---
+
+## The problem it solves
+
+Transferring $100 is two writes: debit one account, credit another. If the process crashes between them, money vanishes. If two transfers run at the same time, they can both read the same balance and overdraw the account. Transactions make multi-step changes safe in the face of crashes and concurrency.
+
+## How it works
+
+### ACID
+
+- **Atomicity:** all of a transaction's writes happen, or none do.
+- **Consistency:** the database moves from one valid state to another (constraints hold). This is mostly the application's job.
+- **Isolation:** concurrent transactions don't interfere in ways that the chosen level forbids.
+- **Durability:** once committed, the data survives a crash, via a write-ahead log flushed to disk (and, in replicated setups, to replicas).
+
+### Anomalies
+
+| Anomaly | What goes wrong |
+|---|---|
+| **Dirty read** | You read another transaction's uncommitted write, which may be rolled back |
+| **Non-repeatable read** | Reading the same row twice in one transaction gives different values |
+| **Phantom** | Re-running a range query returns new rows another transaction inserted |
+| **Lost update** | Two read-modify-write cycles race; one overwrites the other |
+| **Write skew** | Two transactions each read overlapping data, make disjoint writes, and together break a rule (e.g. both on-call doctors go off shift) |
+
+### Isolation levels
+
+| Level | Prevents | Notes |
+|---|---|---|
+| Read uncommitted | Nothing much | Rarely used |
+| **Read committed** | Dirty reads | **Default in PostgreSQL and many others** |
+| Repeatable read / **snapshot isolation** | + non-repeatable reads, most phantoms | Each transaction sees a consistent snapshot; default in MySQL InnoDB |
+| **Serializable** | All of the above, including write skew | As if transactions ran one at a time |
+
+Higher levels cost throughput and cause more aborts that the application must retry. PostgreSQL's serializable level uses *serializable snapshot isolation*: it runs optimistically and aborts a transaction if it detects a dangerous pattern.
+
+### Practical patterns at read committed
+
+- **Atomic updates:** `UPDATE accounts SET balance = balance - 100 WHERE id = 1 AND balance >= 100;` instead of read-then-write.
+- **Explicit locks:** `SELECT … FOR UPDATE` locks rows you're about to modify.
+- **Optimistic concurrency:** keep a `version` column; `UPDATE … WHERE id = 1 AND version = 7`, and retry if zero rows changed.
+- **Constraints:** let unique constraints and foreign keys enforce invariants instead of application checks that race.
+
+```sql
+BEGIN;
+SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;   -- lock the row
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;
+```
+
+## Trade-offs
+
+- **Serializable is safest but slowest** and needs retry logic; read committed is fast but leaves race conditions to you.
+- **Long transactions hurt everyone:** they hold locks, block vacuuming and bloat storage. Keep transactions short and never wait on a network call or user input inside one.
+- **Transactions stop at the database boundary.** Once data spans shards or services, you need [sagas](/principles/distributed-transactions-and-sagas), the [outbox pattern](/principles/transactional-outbox) or [idempotent](/principles/idempotency) operations.
+- **Names lie.** "Repeatable read" means different things in different databases. Read your database's documentation, and Jepsen's analyses, before relying on it.
+
+## In the real world
+
+<Callout type="example" title="Money movement needs more than a transaction">
+Payment companies such as Stripe combine database transactions with **idempotency keys**: the client sends a unique key with each request, and the server stores the key and result in the same transaction as the side effects. A retried request finds the stored result instead of charging twice. The transaction makes each step atomic; the idempotency key makes the whole request safe to retry across network failures.
+</Callout>
+
+Many e-commerce inventory systems hit the lost-update anomaly at flash-sale scale, where thousands of buyers decrement the same stock count. Common fixes are atomic conditional updates (`WHERE stock > 0`) or reserving inventory through a single queue per product.
+
+## Interview angle
+
+<Callout type="interview">
+For anything involving money, inventory or uniqueness, say how you prevent races: "a conditional update so stock never goes negative", or "SELECT FOR UPDATE on the account rows", or "serializable for this small table". Mention retries on serialization failures.
+</Callout>
+
+- Read-modify-write in application code with no lock or version check.
+- Assuming the default isolation level prevents all anomalies.
+- Calling external APIs inside a database transaction.

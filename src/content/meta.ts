@@ -1,7 +1,7 @@
 // Shared by the app and the build-time content tooling, so keep it free of
 // browser or Node specific imports.
 
-export type CollectionId = 'principles' | 'postmortems' | 'case-studies'
+export type CollectionId = 'principles' | 'postmortems' | 'case-studies' | 'practice'
 
 export interface CollectionMeta {
   id: CollectionId
@@ -28,6 +28,12 @@ export const COLLECTIONS: CollectionMeta[] = [
     label: 'Case studies',
     singular: 'Case study',
     description: 'How tech companies solved hard scaling problems in production.',
+  },
+  {
+    id: 'practice',
+    label: 'Practice problems',
+    singular: 'Practice problem',
+    description: 'Interview-style design problems with hints and a reference design.',
   },
 ]
 
@@ -140,7 +146,14 @@ export interface CaseStudyEntry extends BaseEntry {
   principles: string[]
 }
 
-export type Entry = PrincipleEntry | PostmortemEntry | CaseStudyEntry
+export interface PracticeEntry extends BaseEntry {
+  collection: 'practice'
+  difficulty: Difficulty
+  order: number
+  principles: string[]
+}
+
+export type Entry = PrincipleEntry | PostmortemEntry | CaseStudyEntry | PracticeEntry
 
 export interface SearchDoc {
   id: string

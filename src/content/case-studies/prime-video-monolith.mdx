@@ -1,0 +1,49 @@
+---
+title: Prime Video moves a service from serverless to a monolith
+summary: Prime Video's stream-quality monitoring tool was built from serverless functions and step workflows. It hit scaling limits at 5% of expected load, so the team merged it into a single process and cut infrastructure cost by over 90%.
+company: Amazon Prime Video
+year: 2023
+principles: [vertical-vs-horizontal-scaling, latency-vs-throughput, back-of-the-envelope-estimation, stateless-services]
+tags: [serverless, monolith, microservices, cost, step-functions]
+sources:
+  - title: "Prime Video switched from serverless to EC2 and ECS to save costs (InfoQ)"
+    url: https://www.infoq.com/news/2023/05/prime-ec2-ecs-saves-costs/
+---
+
+## The problem
+
+Prime Video runs a service that monitors the quality of thousands of live video streams, looking for defects like frozen frames, block corruption or audio and video falling out of sync.
+
+The first version was built as a distributed, serverless system:
+
+- **AWS Step Functions** orchestrated the workflow for each stream.
+- Separate **Lambda** functions handled steps like splitting video into frames and running each defect detector.
+- Video frames were passed between steps through **Amazon S3**.
+
+It was quick to build. But the team reported that it hit a hard scaling limit at around **5% of the expected load**, and it was expensive:
+
+- Step Functions charges per state transition, and the workflow performed multiple transitions for **every second of every stream**, quickly hitting account limits.
+- Writing frames to S3 so another component could read them back meant a huge number of S3 requests, each costing money and latency.
+
+## The redesign
+
+The team kept the same components but **packed them into a single process** running on Amazon ECS on EC2:
+
+- Frames passed between steps **in memory** instead of through S3.
+- Orchestration happened inside the process instead of through Step Functions.
+- To scale, they ran many copies of the process and spread streams across them with a lightweight layer that assigned streams to instances.
+
+The result, in the team's March 2023 write-up: **infrastructure costs fell by over 90%**, and the service could handle thousands of streams with room to scale further.
+
+## Why it caused debate
+
+The post spread widely as "Amazon abandons microservices". The team's actual point was narrower: for this particular workload, a high-volume, tightly coupled pipeline with one consumer per stream, the overhead of distributing every step outweighed the benefits. Distributed designs still make sense where components scale differently, change independently or are owned by different teams.
+
+## What to take away
+
+<Callout type="tip" title="Key takeaways">
+- **Estimate the per-unit cost early.** "One state transition per second per stream" multiplied by thousands of streams was the whole story; a back-of-the-envelope estimate would have flagged it.
+- **Network hops between tightly coupled steps are expensive.** Passing large data through storage or queues costs money and latency compared with memory.
+- **Architecture should follow the workload, not fashion.** Serverless is great for spiky, independent tasks; steady, heavy pipelines can be cheaper as a single process.
+- **You can still scale a monolith horizontally** by running many identical copies and partitioning the work.
+</Callout>

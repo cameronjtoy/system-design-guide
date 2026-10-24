@@ -10,7 +10,7 @@ const CALLOUT_TITLES: Record<CalloutKind, string> = {
   tip: 'Tip',
   example: 'Real-world example',
   warning: 'Watch out',
-  interview: 'Interview angle',
+  interview: 'What to say',
   note: 'Note',
 }
 
@@ -20,6 +20,16 @@ export function Callout({ type = 'note', title, children }: { type?: CalloutKind
       <div className={styles.calloutTitle}>{title ?? CALLOUT_TITLES[type]}</div>
       <div className={styles.calloutBody}>{children}</div>
     </aside>
+  )
+}
+
+/** A collapsible block for hints and solutions in practice problems. */
+export function Reveal({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className={styles.reveal}>
+      <summary className={styles.revealSummary}>{title}</summary>
+      <div className={styles.revealBody}>{children}</div>
+    </details>
   )
 }
 
@@ -67,4 +77,5 @@ export const mdxComponents: MDXComponents = {
   pre: Pre,
   table: Table,
   Callout,
+  Reveal,
 }

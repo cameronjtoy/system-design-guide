@@ -119,3 +119,9 @@
     padding-bottom: 6px;
   }
 }
+
+.learned {
+  flex: none;
+  margin-left: auto;
+  color: var(--accent-text);
+}

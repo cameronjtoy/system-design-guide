@@ -1,0 +1,47 @@
+---
+title: Google Cloud loses its network control plane
+summary: Maintenance automation descheduled the network control jobs in several locations at once. The network kept running on its last configuration for a few minutes, then routes were withdrawn and capacity across multiple US regions collapsed.
+company: Google Cloud
+date: 2019-06-02
+duration: About 4 hours
+impact: Elevated packet loss and unreachable services across several US regions; YouTube, Gmail, Google Cloud customers such as Snapchat and Discord, and other services were degraded.
+principles: [static-stability, progressive-delivery, graceful-degradation, backpressure-and-load-shedding]
+tags: [control-plane, automation, fail-static, bgp, maintenance]
+sources:
+  - title: Google Cloud Networking Incident #19009
+    url: https://status.cloud.google.com/incident/cloud-networking/19009
+---
+
+## What happened
+
+Google's network is managed by software **control-plane** jobs that compute routes and program switches. Those jobs run on Google's cluster scheduler, alongside other workloads.
+
+On Sunday, June 2, a planned maintenance event was scheduled for a small number of machines in one physical location. Because of how the maintenance automation's scope was configured, it **descheduled the network control jobs and their supporting infrastructure in multiple physical locations** at the same time.
+
+## Why it got worse over time
+
+Google's network is designed to **fail static**: if the control plane disappears, switches keep forwarding traffic using their last known configuration. That worked, for a few minutes. Then the configuration's lifetime expired, BGP routing between the affected locations was withdrawn, and network capacity in several US regions dropped sharply.
+
+With far less capacity, links were heavily congested. Google's network prioritized latency-sensitive and smaller flows over large bulk transfers, which helped keep some services usable, but many users saw errors and timeouts.
+
+## Why recovery took hours
+
+- Engineers identified the root cause within about an hour and stopped the automation, but **restoring the control plane required rebuilding its configuration**, and some configuration data had been lost when the jobs were descheduled.
+- The tools needed to debug and fix the network were themselves slowed by the network congestion.
+- New configuration started rolling out around 14:03 PT, and traffic recovered by 15:40 PT.
+
+## What changed
+
+- Changed the maintenance automation so it won't deschedule network control jobs across multiple locations, and so its scope is checked before it acts.
+- **Extended the fail-static period** so the network can run without its control plane for much longer, buying time for recovery.
+- Made control-plane configuration easier to rebuild and harder to lose.
+- Improved emergency access and tooling that doesn't depend on the impaired network.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Fail static is a great property; make the window long enough.** The data plane surviving without the control plane bought minutes. Hours would have bought a non-event.
+- **Automation needs blast-radius limits.** A maintenance tool that can act on many locations at once is a single point of failure. Constrain scope and rate.
+- **Prioritize traffic under congestion.** Shedding bulk traffic to protect interactive traffic kept some services alive.
+- **Keep the control plane's state recoverable.** Losing configuration turned a restart into a rebuild.
+</Callout>

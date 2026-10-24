@@ -1,0 +1,69 @@
+---
+title: Continuous batching
+summary: Instead of waiting for a whole batch of requests to finish before starting the next, continuous batching adds and removes requests at every decoding step, keeping the GPU full and multiplying throughput.
+difficulty: intermediate
+order: 3
+tags: [batching, continuous-batching, iteration-level-scheduling, orca, vllm, throughput]
+companies: [FriendliAI, NVIDIA]
+related: [llm-inference-basics, kv-cache-and-paged-attention, gpu-scheduling-and-multi-tenancy, latency-vs-throughput, backpressure-and-load-shedding]
+sources:
+  - title: "Orca: A Distributed Serving System for Transformer-Based Generative Models (OSDI 2022)"
+    url: https://www.usenix.org/conference/osdi22/presentation/yu
+  - title: Efficient Memory Management for Large Language Model Serving with PagedAttention (vLLM paper)
+    url: https://arxiv.org/abs/2309.06180
+---
+
+## The problem it solves
+
+LLM decoding is memory-bound: each step reads all the model's weights to produce one token per sequence. Processing many sequences in the same step shares that cost, so **batching is the main lever for throughput**.
+
+Traditional batching (static or request-level batching) groups requests, runs them together until **all** are finished, then starts the next batch. But outputs vary wildly in length: one request in the batch needs 20 tokens, another 2,000. The short ones finish early and their slots sit idle, while new requests wait in the queue for the longest request to complete.
+
+## How it works
+
+**Continuous batching**, also called **iteration-level scheduling** or in-flight batching, makes scheduling decisions at **every decoding step**:
+
+1. At each iteration, the scheduler runs one decode step for every active sequence.
+2. Sequences that just finished (hit an end token or length limit) leave the batch immediately, and their memory is freed.
+3. Waiting requests join the batch right away, as long as there's memory for their KV cache.
+
+Example: request A needs 2 tokens, B needs 8, and C arrives right after the batch starts.
+
+| Decode steps | Static batching | Continuous batching |
+|---|---|---|
+| 1–2 | A and B run | A and B run |
+| 3–8 | B runs; A's slot sits idle; C waits in the queue | B runs; **C takes A's slot at step 3** |
+| 9 onward | C finally starts, after B finishes | C is already done; the slot is free for the next request |
+
+### Handling prefill
+
+New requests need a prefill step (processing their whole prompt), which is much heavier than a decode step and can stall everyone else's token stream. Engines mitigate this by:
+
+- **Chunked prefill:** splitting long prompts into chunks processed alongside decode steps, so streaming stays smooth.
+- **Disaggregated serving:** running prefill and decode on separate GPU pools. See [GPU scheduling](/principles/gpu-scheduling-and-multi-tenancy).
+
+### Memory is the real limit
+
+How many sequences can be batched depends on free KV cache memory. That's why continuous batching pairs naturally with [PagedAttention](/principles/kv-cache-and-paged-attention): allocating KV memory in small blocks on demand lets far more sequences fit.
+
+## Trade-offs
+
+- **Per-user speed vs total throughput:** larger batches raise tokens per second per GPU, but each step takes slightly longer, slowing every user's stream. Engines cap batch size or tokens per step to meet latency targets.
+- **Scheduling policy:** first-come-first-served, priorities, or fairness across tenants. Long prompts can starve short ones without care.
+- **Preemption:** if memory runs out mid-generation, some sequences must be paused and swapped out or recomputed later.
+- **Complexity:** requires custom kernels and careful memory management; use an existing engine (vLLM, TensorRT-LLM, SGLang, TGI) rather than building your own.
+
+## In the real world
+
+<Callout type="example" title="Orca introduces iteration-level scheduling">
+The Orca paper (OSDI 2022), from Seoul National University and FriendliAI, introduced iteration-level scheduling with "selective batching", which batches only the operations that can be batched across sequences of different lengths. On GPT-3 175B, the authors reported a **36.9× throughput improvement** over NVIDIA FasterTransformer at the same latency. vLLM then combined continuous batching with PagedAttention, and the technique is now standard in every major inference engine.
+</Callout>
+
+## Interview angle
+
+<Callout type="interview">
+If asked how to serve an LLM efficiently, mention continuous batching first: "requests join and leave the batch at every decode step, so the GPU stays full; batch size is bounded by KV cache memory and our latency target". Add chunked prefill to keep streams smooth.
+</Callout>
+
+- Proposing static batching with a timeout for LLM serving.
+- Ignoring that batch size trades against per-user token speed.

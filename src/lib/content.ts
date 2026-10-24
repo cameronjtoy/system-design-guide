@@ -7,6 +7,7 @@ import {
   type CollectionId,
   type Entry,
   type PostmortemEntry,
+  type PracticeEntry,
   type PrincipleEntry,
 } from '../content/meta'
 
@@ -42,7 +43,20 @@ export const caseStudies: CaseStudyEntry[] = entries
   .filter((e): e is CaseStudyEntry => e.collection === 'case-studies')
   .sort((a, b) => a.company.localeCompare(b.company) || a.title.localeCompare(b.title))
 
+export const practiceProblems: PracticeEntry[] = entries
+  .filter((e): e is PracticeEntry => e.collection === 'practice')
+  .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title))
+
 const bySlug = new Map(entries.map((e) => [`${e.collection}/${e.slug}`, e]))
+
+/** Look up an entry by its "<collection>/<slug>" id, as used in learning paths. */
+export function getEntryById(id: string): Entry | undefined {
+  return bySlug.get(id)
+}
+
+export function entryId(e: Pick<Entry, 'collection' | 'slug'>): string {
+  return `${e.collection}/${e.slug}`
+}
 
 export function getEntry(collection: CollectionId, slug: string): Entry | undefined {
   return bySlug.get(`${collection}/${slug}`)
@@ -74,6 +88,10 @@ export function relatedPrinciples(p: PrincipleEntry): PrincipleEntry[] {
   }
   slugs.delete(p.slug)
   return resolvePrinciples([...slugs])
+}
+
+export function practiceFor(slug: string): PracticeEntry[] {
+  return practiceProblems.filter((p) => p.principles.includes(slug))
 }
 
 export function postmortemsFor(slug: string): PostmortemEntry[] {

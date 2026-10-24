@@ -1,0 +1,50 @@
+---
+title: Roblox's 73-hour outage
+summary: A newly enabled Consul feature under heavy load, combined with a rare performance bug in Consul's storage layer, brought down the service-discovery cluster that nearly every Roblox service depended on.
+company: Roblox
+date: 2021-10-28
+duration: 73 hours
+impact: Roblox was unavailable to its tens of millions of daily players for three days.
+principles: [observability, cell-based-architecture, service-discovery, bulkheads]
+tags: [consul, service-discovery, boltdb, shared-dependency, hashicorp]
+sources:
+  - title: Roblox Return to Service 10/28–10/31 2021
+    url: https://about.roblox.com/newsroom/2022/01/roblox-return-to-service-10-28-10-31-2021
+---
+
+## What happened
+
+Roblox runs its own data centers and uses **HashiCorp Consul** for service discovery, health checks, session locking and as a key-value store. A single large Consul cluster underpinned almost every service. When Consul became slow and unstable on October 28, the services that depended on it began failing, and Roblox went down.
+
+## Root cause
+
+Roblox and HashiCorp engineers worked together and eventually identified two causes:
+
+1. **A new Consul feature under unusual load.** Roblox had recently upgraded Consul to use its new *streaming* feature, which reduces CPU and network use for large clusters. Under very high read and write load, streaming caused heavy contention on a single Go channel and made performance worse instead of better.
+2. **A BoltDB performance problem.** Consul stores its Raft log in BoltDB. Due to how BoltDB managed free pages, the log file had grown large with free space, and writes became slow as it tracked an ever-larger freelist.
+
+Running one Consul cluster for many different workloads magnified both problems, since everything competed for the same leader and storage.
+
+## Why it took three days
+
+- **Diagnosis was hard.** Symptoms pointed in many directions, and early fixes, like replacing hardware with faster machines, didn't help.
+- **The monitoring depended on the broken system.** Much of Roblox's telemetry relied on Consul, so visibility dropped exactly when it was needed.
+- **Recovery needed a cold start.** Bringing the platform back required carefully restoring Consul, then restarting services and letting players back in gradually, to avoid overloading the recovering systems with a rush of traffic and cache misses.
+
+Engineers disabled streaming across Consul, after which write latency dropped, and fixed the BoltDB issue. The system was stable well before players were let back in, but the cautious bring-up stretched the total to 73 hours.
+
+## What changed
+
+- Split the single Consul cluster into multiple clusters per workload, so one problem can't take down everything.
+- Removed critical telemetry dependencies on Consul.
+- Planned more data center isolation: multiple availability zones and cells.
+- Worked with HashiCorp on fixes to BoltDB usage and streaming under load.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Infrastructure everyone depends on needs bulkheads.** One shared service-discovery cluster was a single point of failure for the whole company.
+- **Your observability must survive your outages.** Monitoring that depends on the failing component goes blind at the worst moment.
+- **New features in core infrastructure deserve extra caution.** Roll them out gradually and under realistic load, with an easy way to turn them off.
+- **Plan the cold start.** Restarting a large platform from zero is its own engineering problem.
+</Callout>

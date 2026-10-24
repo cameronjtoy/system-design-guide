@@ -17,6 +17,7 @@ import {
   type SearchDoc,
   type Source,
 } from '../src/content/meta.ts'
+import { PATHS } from '../src/content/paths.ts'
 
 export interface Problem {
   file: string
@@ -189,6 +190,22 @@ export function loadContent(root: string): LoadResult {
         related: related ?? [],
         companies: companies ?? [],
       }
+    } else if (collection === 'practice') {
+      if (!DIFFICULTIES.includes(fm.difficulty as never)) {
+        error(`"difficulty" must be one of ${DIFFICULTIES.join(', ')}`)
+      }
+      if (typeof fm.order !== 'number') error('missing numeric "order"')
+      const principles = asStringArray(fm.principles)
+      if (!principles || principles.length === 0) {
+        error('"principles" must list at least one principle slug')
+      }
+      entry = {
+        ...base,
+        collection,
+        difficulty: fm.difficulty as (typeof DIFFICULTIES)[number],
+        order: typeof fm.order === 'number' ? fm.order : 999,
+        principles: principles ?? [],
+      }
     } else {
       if (typeof fm.company !== 'string' || !fm.company) error('missing "company"')
       const principles = asStringArray(fm.principles)
@@ -231,7 +248,7 @@ export function loadContent(root: string): LoadResult {
       slug,
       title: entry.title,
       summary: entry.summary,
-      tags: [...entry.tags, 'company' in entry ? entry.company : ''].join(' '),
+      tags: [...entry.tags, 'company' in entry ? entry.company : ''].join(' ').trim(),
       headings: entry.headings.map((h) => h.text).join(' '),
       body: plainText(body).slice(0, SEARCH_BODY_CHARS),
     })
@@ -262,6 +279,17 @@ export function loadContent(root: string): LoadResult {
   for (const link of links) {
     if (!known.has(link.target)) {
       problems.push({ file: link.file, message: `links to missing page "${link.target}"`, level: 'warning' })
+    }
+  }
+
+  // Learning paths are hand-written lists of pages, so a missing page is an error.
+  const pathSlugs = new Set<string>()
+  for (const path of PATHS) {
+    const file = `/src/content/paths.ts#${path.slug}`
+    if (pathSlugs.has(path.slug)) problems.push({ file, message: 'duplicate path slug', level: 'error' })
+    pathSlugs.add(path.slug)
+    for (const step of path.sections.flatMap((s) => s.steps)) {
+      if (!known.has(`/${step}`)) problems.push({ file, message: `step "${step}" does not exist`, level: 'error' })
     }
   }
 

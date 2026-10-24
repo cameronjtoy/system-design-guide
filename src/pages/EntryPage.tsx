@@ -6,21 +6,24 @@ import { COLLECTIONS } from '../content/meta'
 import {
   caseStudiesFor,
   categoryLabel,
+  entryId,
   entryPath,
   formatDate,
   getEntry,
   loadBody,
   neighbours,
   postmortemsFor,
+  practiceFor,
   relatedPrinciples,
   resolvePrinciples,
 } from '../lib/content'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { toggleLearned, useLearned } from '../lib/progress'
 import { mdxComponents } from '../components/Mdx'
 import { Toc } from '../components/Toc'
 import { CardGrid, EntryCard } from '../components/EntryCard'
 import { DifficultyTag, Pill } from '../components/Tags'
-import { ArrowLeftIcon, ArrowRightIcon, ExternalIcon } from '../components/Icons'
+import { ArrowLeftIcon, ArrowRightIcon, CheckCircleIcon, CheckIcon, ExternalIcon } from '../components/Icons'
 import { NotFound } from './NotFound'
 import styles from './EntryPage.module.css'
 
@@ -56,24 +59,32 @@ function footerSections(entry: Entry): Section[] {
   if (entry.collection === 'principles') {
     const failures = postmortemsFor(entry.slug)
     const stories = caseStudiesFor(entry.slug)
+    const practice = practiceFor(entry.slug)
     const related = relatedPrinciples(entry)
     if (failures.length) {
       sections.push({
-        id: 'learn-from-failures',
+        id: 'auto-postmortems',
         title: 'Learn from failures',
         node: <CardGrid>{failures.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
       })
     }
     if (stories.length) {
       sections.push({
-        id: 'in-the-real-world',
-        title: 'In the real world',
+        id: 'auto-case-studies',
+        title: 'Case studies',
         node: <CardGrid>{stories.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
+      })
+    }
+    if (practice.length) {
+      sections.push({
+        id: 'auto-practice',
+        title: 'Practice problems',
+        node: <CardGrid>{practice.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
       })
     }
     if (related.length) {
       sections.push({
-        id: 'related-principles',
+        id: 'auto-related',
         title: 'Related principles',
         node: <CardGrid>{related.map((e) => <EntryCard key={e.slug} entry={e} compact />)}</CardGrid>,
       })
@@ -82,14 +93,14 @@ function footerSections(entry: Entry): Section[] {
     const involved = resolvePrinciples(entry.principles)
     if (involved.length) {
       sections.push({
-        id: 'principles-in-play',
+        id: 'auto-principles',
         title: 'Principles in play',
         node: <CardGrid>{involved.map((e) => <EntryCard key={e.slug} entry={e} compact />)}</CardGrid>,
       })
     }
   }
   if (entry.sources.length) {
-    sections.push({ id: 'sources', title: 'Sources', node: <SourceList sources={entry.sources} /> })
+    sections.push({ id: 'auto-sources', title: 'Sources', node: <SourceList sources={entry.sources} /> })
   }
   return sections
 }
@@ -110,7 +121,7 @@ function SourceList({ sources }: { sources: Source[] }) {
   )
 }
 
-function EntryHeader({ entry }: { entry: Entry }) {
+function EntryHeader({ entry, learned }: { entry: Entry; learned: boolean }) {
   const collection = COLLECTIONS.find((c) => c.id === entry.collection)!
   return (
     <header className={styles.header}>
@@ -123,7 +134,15 @@ function EntryHeader({ entry }: { entry: Entry }) {
           </>
         )}
       </nav>
-      <h1 className={styles.title}>{entry.title}</h1>
+      <h1 className={styles.title}>
+        {entry.title}
+        {learned && (
+          <span className={styles.learnedBadge} title="You marked this as learned">
+            <CheckIcon width={16} height={16} />
+            <span className="visually-hidden">Learned</span>
+          </span>
+        )}
+      </h1>
       <p className={styles.lead}>{entry.summary}</p>
 
       {entry.collection === 'principles' && (
@@ -147,7 +166,7 @@ function EntryHeader({ entry }: { entry: Entry }) {
             <dd>{formatDate(entry.date)}</dd>
           </div>
           {entry.duration && (
-            <div>
+            <div className={styles.factDuration}>
               <dt>Duration</dt>
               <dd>{entry.duration}</dd>
             </div>
@@ -157,6 +176,14 @@ function EntryHeader({ entry }: { entry: Entry }) {
             <dd>{entry.impact}</dd>
           </div>
         </dl>
+      )}
+
+      {entry.collection === 'practice' && (
+        <div className={styles.meta}>
+          <DifficultyTag level={entry.difficulty} />
+          <Pill>{entry.readingMinutes} min read</Pill>
+          <span className={styles.companies}>Try it yourself before opening the hints</span>
+        </div>
       )}
 
       {entry.collection === 'case-studies' && (
@@ -174,6 +201,7 @@ export function EntryPage({ collection }: { collection: CollectionId }) {
   const { slug = '' } = useParams()
   const entry = getEntry(collection, slug)
   const { Body, error, retry } = useBody(entry)
+  const learnedSet = useLearned()
   useDocumentTitle(entry?.title)
 
   if (!entry) return <NotFound />
@@ -184,11 +212,13 @@ export function EntryPage({ collection }: { collection: CollectionId }) {
     ...sections.map((s) => ({ depth: 2 as const, text: s.title, id: s.id })),
   ]
   const { prev, next } = entry.collection === 'principles' ? neighbours(entry) : {}
+  const id = entryId(entry)
+  const learned = learnedSet.has(id)
 
   return (
     <div className={styles.layout}>
       <article className={styles.article}>
-        <EntryHeader entry={entry} />
+        <EntryHeader entry={entry} learned={learned} />
         {Body && (
           <div className={styles.inlineToc}>
             <Toc headings={headings} variant="inline" />
@@ -220,6 +250,23 @@ export function EntryPage({ collection }: { collection: CollectionId }) {
               </section>
             ))}
         </div>
+
+        {Body && (
+          <div className={styles.learnedRow}>
+            <button
+              type="button"
+              className={styles.learnedButton}
+              aria-pressed={learned}
+              onClick={() => toggleLearned(id)}
+            >
+              <CheckCircleIcon width={20} height={20} />
+              {learned ? 'Learned' : 'Mark as learned'}
+            </button>
+            <span className={styles.learnedHint}>
+              {learned ? 'Saved in this browser. Tap again to undo.' : 'Track your progress on the My progress page.'}
+            </span>
+          </div>
+        )}
 
         {(prev || next) && (
           <nav className={styles.pager} aria-label="More principles">

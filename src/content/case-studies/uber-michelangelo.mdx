@@ -1,0 +1,56 @@
+---
+title: Uber's Michelangelo machine learning platform
+summary: Before Michelangelo, every Uber team built its own one-off pipeline to train and deploy models. A shared platform for data, training, deployment and monitoring turned ML into a repeatable service used across the company.
+company: Uber
+year: 2017
+principles: [observability, progressive-delivery, stateless-services, multi-tier-caching, stream-processing]
+tags: [ml-platform, feature-store, model-serving, mlops, training]
+sources:
+  - title: "Meet Michelangelo: Uber's Machine Learning Platform"
+    url: https://www.uber.com/blog/michelangelo-machine-learning-platform/
+---
+
+## The problem
+
+Uber uses machine learning across its products: estimating arrival times, matching riders and drivers, pricing, fraud detection and food delivery time predictions. Before 2016, there was no standard way to build and run these models.
+
+Uber's 2017 post describes the situation: data scientists used many different tools; there was no reliable, standard way to build training datasets or store experiments; and engineering teams built separate, one-off systems to put each model into production. Models larger than what fit on a data scientist's desktop were hard to train at all.
+
+## The design
+
+Michelangelo provided machine learning as an internal service, covering the full workflow:
+
+```mermaid
+flowchart LR
+    D[Manage data: feature store] --> T[Train models: distributed]
+    T --> E[Evaluate: compare experiments]
+    E --> P[Deploy: online or batch]
+    P --> S[Serve predictions]
+    S --> M[Monitor: prediction vs outcome]
+    M --> D
+```
+
+### Managing data and a shared feature store
+
+Features, the inputs models learn from, are often the hardest part. Michelangelo let teams compute features with batch jobs (from the data lake) and with streaming jobs (from Kafka) for near-real-time values, then store them in a shared **feature store**. Features built by one team, such as a restaurant's average meal preparation time, could be reused by others, and the same feature definitions were used for training and serving, avoiding mismatches between the two.
+
+### Training and evaluation
+
+Teams trained models at scale on Uber's compute clusters, with each training run's configuration, data, metrics and resulting model recorded, so experiments could be compared and reproduced.
+
+### Deployment and serving
+
+Models could be deployed for **offline** batch predictions or as **online** prediction services behind an API. Online serving looked up the latest feature values from a low-latency store (Cassandra in the original design), giving predictions within milliseconds.
+
+### Monitoring
+
+Michelangelo logged predictions and later joined them with actual outcomes (did the trip really take that long?), so teams could track accuracy over time and detect drift.
+
+## What to take away
+
+<Callout type="tip" title="Key takeaways">
+- **Platforms beat one-off pipelines** once many teams do the same kind of work.
+- **The feature store is the heart of ML infrastructure:** consistent features for training and serving, reusable across teams.
+- **Treat models like deployable services,** with versioning, staged rollout and monitoring.
+- **Close the loop:** comparing predictions with real outcomes is how you notice when a model stops working.
+</Callout>

@@ -1,0 +1,78 @@
+---
+title: Clocks and ordering
+summary: Machines' clocks drift and jump, so timestamps can't reliably say which event happened first. Logical clocks, version vectors and bounded-uncertainty clocks give distributed systems a trustworthy order.
+difficulty: advanced
+order: 5
+tags: [clocks, lamport-clocks, vector-clocks, hlc, ntp, truetime, ordering]
+companies: [Google, Amazon, CockroachDB]
+related: [consensus-and-raft, consistency-models, quorums, split-brain-and-fencing, leader-election]
+sources:
+  - title: Time, Clocks, and the Ordering of Events in a Distributed System (Leslie Lamport, 1978)
+    url: https://www.microsoft.com/en-us/research/publication/time-clocks-ordering-events-distributed-system/
+  - title: "Spanner: Google's Globally-Distributed Database (OSDI 2012)"
+    url: https://www.usenix.org/conference/osdi12/technical-sessions/presentation/corbett
+---
+
+## The problem it solves
+
+"Last write wins" sounds simple: keep the update with the latest timestamp. But each machine's clock is a quartz crystal that drifts, synchronized over the network with NTP, which can be off by milliseconds or, on a bad day, much more. Clocks can even jump backwards when corrected.
+
+If server A's clock is 50 ms ahead of server B's, a write on B that truly happened later can carry an earlier timestamp and be silently discarded. Ordering by wall-clock time across machines is unreliable.
+
+## How it works
+
+### Physical clocks: know their limits
+
+- Use **monotonic clocks** for measuring durations and timeouts; they never jump backwards.
+- Use wall-clock time only for display and coarse ordering, and monitor clock skew.
+- Leap seconds and daylight-saving changes cause real outages; use UTC and well-tested libraries.
+
+### Lamport clocks
+
+Each node keeps a counter. It increments the counter for every event, sends it with every message, and on receiving a message sets its counter to `max(local, received) + 1`.
+
+If event A caused event B, A's timestamp is lower. Ties are broken by node ID, giving a **total order** consistent with causality. But a lower timestamp doesn't prove A caused B: concurrent events also get ordered, arbitrarily.
+
+### Version vectors (vector clocks)
+
+Each item carries a counter **per node**. Comparing two vectors tells you whether one version descends from the other, or whether they're **concurrent** (a conflict that needs merging). Dynamo-style databases use them to detect conflicting writes instead of silently dropping one.
+
+```text
+v1 = {A:2, B:1}   v2 = {A:2, B:2}   → v2 descends from v1: keep v2
+v1 = {A:3, B:1}   v2 = {A:2, B:2}   → concurrent: keep both, merge
+```
+
+### Hybrid logical clocks (HLC)
+
+Combine a physical timestamp with a logical counter. Timestamps stay close to real time (useful for debugging and time-based queries) while still respecting causality. CockroachDB and MongoDB use variants.
+
+### Bounded uncertainty: TrueTime
+
+Google Spanner's TrueTime returns an interval `[earliest, latest]` guaranteed to contain real time, using GPS and atomic clocks to keep it to a few milliseconds. Spanner waits out the uncertainty before committing, which gives globally ordered transactions. See [Google Spanner and TrueTime](/case-studies/google-spanner-truetime).
+
+## Trade-offs
+
+| Approach | Gives you | Cost |
+|---|---|---|
+| Wall clock + LWW | Simple ordering | Silently loses writes under skew |
+| Lamport clock | Causality-consistent total order | Can't detect concurrency |
+| Version vectors | Detects concurrent writes | Grows with number of writers; app must merge |
+| HLC | Causal + close to real time | Still needs bounded skew |
+| TrueTime | External consistency | Specialized hardware, commit wait |
+
+## In the real world
+
+<Callout type="example" title="When time breaks things">
+Microsoft Azure's 2012 outage was caused by adding one to the year of February 29 when generating certificates. See [Azure's leap day certificate bug](/postmortems/azure-leap-day-2012). Leap seconds have caused similar incidents, which is why large providers now "smear" the extra second over many hours rather than inserting it at once.
+</Callout>
+
+Lamport's 1978 paper introducing logical clocks remains one of the most cited papers in computer science, because it reframed time in distributed systems as a question of **causality** rather than clocks.
+
+## Interview angle
+
+<Callout type="interview">
+If your design resolves conflicts with "latest timestamp wins", acknowledge clock skew and either accept the risk (for low-value data like presence), or use a single writer per key, version numbers checked on write, or version vectors with application merges.
+</Callout>
+
+- Comparing timestamps from different machines as if they were exact.
+- Using wall-clock time to measure timeouts.

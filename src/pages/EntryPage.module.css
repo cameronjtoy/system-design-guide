@@ -106,6 +106,13 @@
   grid-column: 1 / -1;
 }
 
+/* Durations are often long sentences; give them their own row on phones. */
+@media (max-width: 639px) {
+  .factDuration {
+    grid-column: 1 / -1;
+  }
+}
+
 .footerSection h2 {
   margin-bottom: 16px;
 }
@@ -213,5 +220,57 @@
   gap: 4px;
   font-size: 0.8rem;
   font-weight: 500;
+  color: var(--text-muted);
+}
+
+.learnedBadge {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: 10px;
+  vertical-align: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.learnedRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 40px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.learnedButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.learnedButton:hover {
+  border-color: var(--accent-soft);
+}
+
+.learnedButton[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.learnedHint {
+  font-size: 0.85rem;
   color: var(--text-muted);
 }

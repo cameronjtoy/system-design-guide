@@ -1,0 +1,76 @@
+---
+title: SQL vs NoSQL
+summary: Relational databases give you flexible queries, joins and transactions; NoSQL stores trade some of that for easy horizontal scale, flexible schemas or a data model that fits one access pattern perfectly.
+difficulty: beginner
+order: 1
+tags: [sql, nosql, postgres, mysql, dynamodb, cassandra, mongodb, document, key-value]
+companies: [Amazon, Instagram, Figma, Discord]
+related: [data-modeling-and-denormalization, transactions-and-isolation-levels, sharding-and-partitioning, database-indexing, lsm-trees-vs-b-trees]
+sources:
+  - title: "Dynamo: Amazon's Highly Available Key-value Store (SOSP 2007)"
+    url: https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf
+  - title: Sharding & IDs at Instagram
+    url: https://instagram-engineering.com/sharding-ids-at-instagram-1cf5a71e5a5c
+  - title: How Figma's databases team lived to tell the scale
+    url: https://www.figma.com/blog/how-figmas-databases-team-lived-to-tell-the-scale/
+---
+
+## The problem it solves
+
+Choosing a database is one of the hardest decisions to reverse. The wrong choice shows up later as slow queries, painful migrations, or a scaling wall. "SQL vs NoSQL" is really a question about your data's shape, your access patterns and how much you need to scale writes.
+
+## How it works
+
+### Relational (SQL)
+
+PostgreSQL, MySQL, SQL Server. Data lives in tables with a fixed schema; relationships use foreign keys and joins.
+
+- **Strengths:** ad-hoc queries, joins, secondary indexes, ACID transactions, mature tooling, one source of truth.
+- **Weaknesses:** scaling writes past one primary needs sharding, which the database usually doesn't do for you; schema changes on huge tables need care.
+
+### NoSQL families
+
+| Type | Examples | Data model | Sweet spot |
+|---|---|---|---|
+| Key-value | Redis, DynamoDB, Memcached | Key → value | Sessions, caches, simple lookups at massive scale |
+| Wide-column | Cassandra, ScyllaDB, Bigtable, HBase | Partition key → sorted rows | Time series, messages, very high write rates |
+| Document | MongoDB, Firestore, Couchbase | Key → JSON document | Nested objects read together, evolving schemas |
+| Graph | Neo4j, Neptune | Nodes and edges | Many-hop relationship queries |
+| Search | Elasticsearch, OpenSearch | Inverted index | Full-text search, log analytics |
+
+Most NoSQL stores are designed to **partition automatically** across many machines, which is their main scaling advantage. The price is usually weaker transactions across partitions and queries limited to what the key design supports.
+
+### How to choose
+
+1. **Default to a relational database** unless you have a specific reason not to. It covers most products far longer than people expect.
+2. **Pick NoSQL for a known pattern at scale:** huge write volume, a single dominant query, or global multi-region writes.
+3. **Use several.** Most large systems combine a relational source of truth with a cache, a search index and maybe a wide-column store for one hot workload.
+
+## Trade-offs
+
+| Question | Leans SQL | Leans NoSQL |
+|---|---|---|
+| Do you need joins and ad-hoc queries? | Yes | Rarely |
+| Multi-row transactions? | Essential | Rare, or within one partition |
+| Write volume beyond one machine? | Not yet | Yes, from day one |
+| Access patterns known up front? | Not really | Yes, and stable |
+| Schema changes often? | Migrations are fine | Flexible documents help |
+
+"NoSQL is faster" isn't true in general. A well-indexed Postgres query on one machine is very fast; NoSQL wins when you need to spread a simple access pattern over many machines.
+
+## In the real world
+
+<Callout type="example" title="Amazon Dynamo: built for one requirement">
+Amazon's Dynamo paper (2007) describes a key-value store built because many services, like the shopping cart, only needed primary-key access and could not afford to be unavailable. A relational database's query flexibility and strong consistency weren't worth the availability cost for those workloads. Dynamo's ideas (consistent hashing, quorums, vector clocks) shaped Cassandra, Riak and DynamoDB.
+</Callout>
+
+The opposite choice is just as common. Instagram evaluated NoSQL options and decided to shard PostgreSQL instead, because the team already knew it well. Figma grew on Postgres for years, splitting tables onto separate databases, before building its own horizontal sharding on top of Postgres rather than migrating to a different database. Discord went the other way for messages, moving from MongoDB to Cassandra and then ScyllaDB because one write-heavy access pattern dominated. See [How Discord stores trillions of messages](/case-studies/discord-trillions-of-messages).
+
+## Interview angle
+
+<Callout type="interview">
+Justify the choice with access patterns and numbers: "Orders need transactions and flexible reporting, so Postgres. The activity feed is append-heavy and always read by user ID and time, so a wide-column store partitioned by user." Using two databases for two different workloads is a strong answer.
+</Callout>
+
+- Choosing NoSQL "because it scales" without a write estimate.
+- Ignoring that you'll still need secondary access patterns (search, admin queries, analytics).
