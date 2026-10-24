@@ -1,0 +1,77 @@
+---
+title: Exactly-once delivery
+summary: Networks can't guarantee a message is delivered exactly once, but systems can guarantee it's processed exactly once by combining at-least-once delivery with idempotent or transactional processing.
+difficulty: advanced
+order: 4
+tags: [exactly-once, at-least-once, at-most-once, kafka-transactions, deduplication]
+companies: [Confluent, LinkedIn]
+related: [idempotency, message-queues-vs-logs, transactional-outbox, stream-processing, timeouts-retries-and-backoff]
+sources:
+  - title: "Exactly-once Semantics Are Possible: Here's How Kafka Does It (Confluent)"
+    url: https://www.confluent.io/blog/exactly-once-semantics-are-possible-heres-how-apache-kafka-does-it/
+---
+
+## The problem it solves
+
+A producer sends a message and waits for an acknowledgment. If the acknowledgment doesn't arrive, the producer has two choices:
+
+- **Don't resend:** if the message was lost, it's gone (**at-most-once**).
+- **Resend:** if the message actually arrived and only the ack was lost, it's now delivered twice (**at-least-once**).
+
+No protocol can tell these cases apart over an unreliable network, which is why "exactly-once delivery" in the literal sense is impossible. Yet billing, counting and financial systems need each event to have its effect exactly once.
+
+## How it works
+
+The practical answer is **exactly-once processing**: deliver at least once, and make duplicates have no extra effect.
+
+| Guarantee | How | Risk |
+|---|---|---|
+| At-most-once | Send once, never retry; commit offset before processing | Lost messages |
+| At-least-once | Retry until acked; commit offset after processing | Duplicates |
+| Effectively exactly-once | At-least-once + dedup or atomic commit of results and progress | Complexity, some latency |
+
+### Techniques
+
+1. **Idempotent consumers:** processing the same message twice has the same effect. See [idempotency](/principles/idempotency).
+2. **Deduplication:** each message carries a unique ID; consumers record processed IDs in the same transaction as their output.
+3. **Atomic output + progress:** write the result and the consumer's position (offset) in one transaction, so after a crash they're either both saved or both not.
+4. **Transactional messaging:** some brokers let a producer write to several partitions and commit consumer offsets atomically.
+
+### Kafka's approach
+
+Apache Kafka added exactly-once semantics in version 0.11 (2017):
+
+- **Idempotent producers:** each producer gets an ID and each message a sequence number per partition; the broker discards duplicates from retries.
+- **Transactions:** a producer can write to multiple partitions **and** commit its consumer offsets in one atomic transaction. Consumers set to `read_committed` only see messages from committed transactions.
+- Kafka Streams uses these together, so a read-process-write pipeline within Kafka is processed exactly once.
+
+```mermaid
+flowchart LR
+    I[Input topic] --> P[Processor]
+    P -->|transaction: write output + commit offset| O[Output topic]
+    O --> C[read_committed consumers]
+```
+
+## Trade-offs
+
+- **Boundaries matter.** Kafka's guarantee covers Kafka to Kafka. The moment you call an external API or write to another database, you need idempotency or an outbox for that step.
+- **Latency and throughput.** Transactions add coordination; consumers in `read_committed` mode wait for commits.
+- **Dedup state grows.** Message-ID tables need retention policies, and a duplicate arriving after expiry won't be caught.
+- **"Exactly once" in marketing** often means "within this product, under these conditions". Read the fine print.
+
+## In the real world
+
+<Callout type="example" title="Kafka's exactly-once semantics">
+Confluent's announcement post explains why exactly-once was long considered impossible, and how idempotent producers plus transactions across partitions and consumer offsets make it achievable for stream processing inside Kafka. It also notes that applications writing to external systems still need to handle duplicates themselves.
+</Callout>
+
+Payment systems typically combine at-least-once queues with idempotency keys and unique constraints on transaction IDs, so a redelivered "charge" event can't create a second charge.
+
+## Interview angle
+
+<Callout type="interview">
+If asked for exactly-once, say: "Delivery is at-least-once; processing is made exactly-once through idempotency: dedup by event ID in the same transaction as the write." Mention Kafka transactions if the pipeline stays within Kafka.
+</Callout>
+
+- Claiming a queue guarantees exactly-once delivery end to end.
+- Committing offsets before processing (silently drops messages on crashes).

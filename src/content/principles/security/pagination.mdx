@@ -1,0 +1,95 @@
+---
+title: Pagination
+summary: Lists must be returned in pages. Offset pagination is simple but slow and inconsistent on large, changing data; cursor (keyset) pagination stays fast and stable at any depth.
+difficulty: beginner
+order: 3
+tags: [pagination, cursor, keyset, offset, api-design]
+companies: [Slack, Google, Stripe]
+related: [api-design-and-versioning, database-indexing, sharding-and-partitioning]
+sources:
+  - title: "AIP-158: Pagination (Google)"
+    url: https://google.aip.dev/158
+  - title: Evolving API Pagination at Slack
+    url: https://slack.engineering/evolving-api-pagination-at-slack/
+---
+
+## The problem it solves
+
+`GET /messages` on a channel with ten million messages can't return them all: the response would be huge, slow and likely time out, and the database would scan everything. Every endpoint that returns a list needs to return it in pages, and how you page affects performance and correctness.
+
+## How it works
+
+### Offset pagination
+
+```http
+GET /messages?limit=50&offset=1000
+```
+
+```sql
+SELECT * FROM messages WHERE channel_id = 7
+ORDER BY created_at DESC LIMIT 50 OFFSET 1000;
+```
+
+- **Simple**, and supports jumping to page N.
+- **Slow at depth:** the database still reads and discards the first 1,000 rows. Page 10,000 is very slow.
+- **Unstable:** if new messages arrive while a user pages, items shift, so pages can skip or repeat items.
+
+### Cursor (keyset) pagination
+
+The server returns an opaque **cursor** pointing at the last item; the next request continues from there:
+
+```http
+GET /messages?limit=50
+→ { "items": [...], "next_cursor": "eyJ0IjoxNzA..." }
+
+GET /messages?limit=50&cursor=eyJ0IjoxNzA...
+```
+
+```sql
+-- cursor decodes to the last item's (created_at, id)
+SELECT * FROM messages
+WHERE channel_id = 7 AND (created_at, id) < ('2026-10-01 12:00', 98123)
+ORDER BY created_at DESC, id DESC
+LIMIT 50;
+```
+
+- **Fast at any depth** when an index matches the sort order. See [database indexing](/principles/database-indexing).
+- **Stable:** new items don't shift what the next page returns.
+- Include a **tiebreaker** (like the ID) so items with identical timestamps aren't skipped.
+- Make cursors **opaque** (e.g. base64-encoded), so you can change their contents later.
+
+### API conventions
+
+- Always cap `limit` (e.g. a default of 50, a max of 1,000).
+- Return the cursor for the next page, and an empty or missing cursor at the end.
+- Google's AIP-158 standardizes this as `page_size` and `page_token` in, and `next_page_token` out.
+
+## Trade-offs
+
+| | Offset | Cursor |
+|---|---|---|
+| Jump to page N | Yes | No (only next/previous) |
+| Deep pages | Slow | Fast |
+| Consistency under inserts | Skips/duplicates | Stable |
+| Total count | Easy (but costly) | Usually omitted |
+| Implementation | Trivial | Needs a stable sort and index |
+
+Total counts on huge tables are expensive; many APIs return an estimate or omit them.
+
+## In the real world
+
+<Callout type="example" title="Slack moves to cursors">
+Slack's engineering blog describes moving its API from offset-style pagination to **cursor-based pagination**. Offset queries got slower as workspaces grew, and results could be inconsistent when data changed between requests. Opaque cursors let Slack change the underlying implementation later without breaking clients.
+</Callout>
+
+Stripe's list endpoints use `starting_after` and `ending_before` with object IDs, a cursor-style approach that keeps pagination fast across very large datasets.
+
+## Interview angle
+
+<Callout type="interview">
+Whenever you return a list (feeds, messages, search results, orders), mention cursor pagination with a limit, sorted by a stable key with an index behind it. Offer offset only for small admin lists that need page numbers.
+</Callout>
+
+- Unbounded list endpoints.
+- Deep offset pagination on large tables.
+- Cursors that expose raw database values clients start depending on.
