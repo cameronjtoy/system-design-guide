@@ -1,0 +1,90 @@
+.figure {
+  position: relative;
+  margin: 1.6em 0;
+  padding: 16px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.canvas {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.canvas :global(svg) {
+  height: auto;
+}
+
+.placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 160px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.expand,
+.closeFull {
+  position: absolute;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.expand {
+  top: 6px;
+  right: 6px;
+  width: 36px;
+  height: 36px;
+}
+
+@media (pointer: coarse) {
+  .expand {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+.expand:hover,
+.closeFull:hover {
+  color: var(--text);
+}
+
+.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: var(--bg);
+  overflow: auto;
+  touch-action: pan-x pan-y pinch-zoom;
+  padding: calc(64px + env(safe-area-inset-top)) var(--gutter) calc(24px + env(safe-area-inset-bottom));
+}
+
+.closeFull {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 1;
+}
+
+/* Draw the diagram larger than the screen so it can be panned and zoomed. */
+.fullCanvas :global(svg) {
+  display: block;
+  width: max(100%, 960px) !important;
+  max-width: none !important;
+  height: auto;
+  margin: 0 auto;
+}
+
+.error {
+  white-space: pre-wrap;
+  color: var(--tag-advanced-fg);
+}
