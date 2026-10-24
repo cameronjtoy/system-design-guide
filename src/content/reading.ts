@@ -152,6 +152,43 @@ export const READING: ReadingGroup[] = [
     ],
   },
   {
+    id: 'ai-infrastructure',
+    title: 'AI infrastructure',
+    intro: 'Primary sources behind the AI infrastructure track: serving, training and building on large models.',
+    items: [
+      {
+        title: 'Efficient Memory Management for LLM Serving with PagedAttention (vLLM, 2023)',
+        url: 'https://arxiv.org/abs/2309.06180',
+        note: 'Why KV cache memory limits LLM throughput, and how paging fixes it.',
+      },
+      {
+        title: 'Orca: iteration-level scheduling for generative models (OSDI 2022)',
+        url: 'https://www.usenix.org/conference/osdi22/presentation/yu',
+        note: 'The paper that introduced continuous batching.',
+      },
+      {
+        title: 'The Llama 3 Herd of Models (Meta, 2024)',
+        url: 'https://arxiv.org/abs/2407.21783',
+        note: 'Unusually detailed account of training infrastructure, parallelism and failure rates at 16K GPUs.',
+      },
+      {
+        title: 'Fast Inference from Transformers via Speculative Decoding (2022)',
+        url: 'https://arxiv.org/abs/2211.17192',
+        note: 'Drafting tokens with a small model and verifying them with a large one.',
+      },
+      {
+        title: 'Building effective agents (Anthropic)',
+        url: 'https://www.anthropic.com/research/building-effective-agents',
+        note: 'When to use workflows versus agents, and patterns that work in production.',
+      },
+      {
+        title: 'OWASP Top 10 for Large Language Model Applications',
+        url: 'https://owasp.org/www-project-top-10-for-large-language-model-applications/',
+        note: 'The main security risks for LLM apps, from prompt injection to excessive agency.',
+      },
+    ],
+  },
+  {
     id: 'books',
     title: 'Books',
     intro: 'For going deeper than any single article can.',

@@ -1,0 +1,80 @@
+---
+title: GPU scheduling and multi-tenancy
+summary: GPUs are the scarcest, most expensive resource in AI systems. Packing workloads onto them, splitting prefill from decode, sharing GPUs between models and tenants, and autoscaling on the right signals decide what AI features cost.
+difficulty: advanced
+order: 6
+tags: [gpu, scheduling, mig, autoscaling, disaggregated-serving, lora, multi-tenancy, cost]
+companies: [NVIDIA, Microsoft, Meta]
+related: [continuous-batching, llm-inference-basics, autoscaling, bulkheads, rate-limiting, quantization-and-distillation]
+sources:
+  - title: "Splitwise: Efficient Generative LLM Inference Using Phase Splitting"
+    url: https://arxiv.org/abs/2311.18677
+  - title: "DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving"
+    url: https://arxiv.org/abs/2401.09670
+  - title: "S-LoRA: Serving Thousands of Concurrent LoRA Adapters"
+    url: https://arxiv.org/abs/2311.03285
+---
+
+## The problem it solves
+
+A single high-end GPU costs tens of thousands of dollars to buy, or several dollars an hour to rent, and supply is limited. Yet GPUs are easy to waste: a model that uses 30% of a GPU's memory, a replica idling between traffic peaks, a long prompt stalling dozens of streaming users. At AI scale, utilization is the difference between a profitable feature and an unaffordable one.
+
+## How it works
+
+### Right-size the model to the hardware
+
+- Fit weights plus KV cache into GPU memory with room for batching. Large models are split across GPUs with **tensor parallelism** (each layer split across GPUs in one server, connected by fast links like NVLink).
+- Smaller models can share one GPU, using **MIG** (Multi-Instance GPU, which splits recent NVIDIA data-center GPUs into up to seven isolated slices) or by running several model servers per GPU.
+
+### Separate prefill from decode
+
+Prefill is compute-bound and bursty; decode is memory-bound and steady. Running both on the same GPUs means long prompts interrupt everyone's token streams. **Disaggregated serving** runs them on separate GPU pools:
+
+```mermaid
+flowchart LR
+    R[Requests] --> PF[Prefill pool: compute-optimized]
+    PF -->|transfer KV cache| DC[Decode pool: memory-bandwidth-optimized]
+    DC --> S[Streamed tokens]
+```
+
+Each pool can be sized and even use different hardware for its bottleneck, at the cost of moving KV caches between them over fast networks.
+
+### Share base models across tenants
+
+Many customers or features want slightly customized models. Instead of one full copy per customer, serve one **base model** and load small **LoRA adapters** (low-rank weight updates, a few MB to a few hundred MB) per request. Systems like S-LoRA and Punica batch requests for different adapters together on the same GPU.
+
+### Scheduling and fairness
+
+- **Priority queues:** interactive requests ahead of batch jobs; batch work fills idle capacity.
+- **Per-tenant limits:** token-based [rate limits](/principles/rate-limiting) (tokens per minute, not just requests) and concurrency caps so one tenant can't monopolize GPUs.
+- **Admission control:** reject or queue requests when KV memory is full rather than overloading the server.
+
+### Autoscaling GPUs
+
+- Scale on **queue depth, active sequences or KV cache utilization**, not CPU.
+- **Cold starts are slow:** provisioning a GPU node and loading tens of gigabytes of weights can take minutes. Keep warm capacity, cache weights on local disk, and use faster weight loading.
+- Mix **reserved capacity** for the baseline with on-demand or spot capacity for peaks and batch jobs.
+
+## Trade-offs
+
+- **Utilization vs latency:** packing GPUs fully maximizes throughput but leaves no headroom for spikes.
+- **Isolation vs efficiency:** dedicated GPUs per tenant are predictable but wasteful; sharing is efficient but needs fairness controls.
+- **Disaggregation adds network transfer** of KV caches and more components to operate.
+- **Spot capacity is cheap but can be reclaimed;** fine for batch, risky for interactive serving.
+
+## In the real world
+
+<Callout type="example" title="Splitting the phases">
+Microsoft's **Splitwise** and the **DistServe** research from Peking University and UC San Diego both showed that running prefill and decode on separate machines improves throughput or cost at the same latency targets, because each phase can use hardware and batching suited to its bottleneck. Several production inference stacks have since adopted disaggregated prefill and decode.
+</Callout>
+
+**S-LoRA** demonstrated serving thousands of LoRA adapters on a small number of GPUs by keeping adapters in host memory, loading them on demand and batching requests for different adapters together, the pattern behind many fine-tuning-as-a-service offerings.
+
+## Interview angle
+
+<Callout type="interview">
+For an LLM serving design, size GPUs from weights plus KV cache, explain batching and queueing, autoscale on queue depth with warm capacity for slow cold starts, apply token-based per-tenant limits, and consider separate pools for interactive and batch traffic.
+</Callout>
+
+- Autoscaling GPU servers on CPU usage.
+- Ignoring model-loading time in scale-up plans.
