@@ -1,0 +1,98 @@
+.shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.skip {
+  position: absolute;
+  left: 8px;
+  top: -48px;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--radius);
+}
+
+.skip:focus {
+  top: 8px;
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px max(var(--gutter), env(safe-area-inset-right)) calc(64px + env(safe-area-inset-bottom))
+    max(var(--gutter), env(safe-area-inset-left));
+  outline: none;
+}
+
+/* Phones and tablets: the sidebar is an off-canvas drawer. */
+.sidebar {
+  position: fixed;
+  z-index: 40;
+  top: var(--header-h);
+  bottom: 0;
+  left: 0;
+  width: min(86vw, var(--sidebar-w));
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 200ms ease,
+    visibility 0s linear 200ms;
+  padding-left: env(safe-area-inset-left);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sidebar[data-open='true'] {
+  transform: none;
+  visibility: visible;
+  transition: transform 200ms ease;
+}
+
+.overlay {
+  position: fixed;
+  z-index: 39;
+  inset: var(--header-h) 0 0 0;
+  background: var(--overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.overlay[data-open='true'] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Desktop: the sidebar is a sticky column. */
+@media (min-width: 1024px) {
+  .sidebar {
+    position: sticky;
+    top: var(--header-h);
+    height: calc(100vh - var(--header-h));
+    flex: 0 0 var(--sidebar-w);
+    transform: none;
+    visibility: visible;
+    transition: none;
+    background: transparent;
+  }
+
+  .overlay {
+    display: none;
+  }
+
+  .main {
+    padding-top: 40px;
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}

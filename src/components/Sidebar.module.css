@@ -1,0 +1,121 @@
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 16px 12px 32px;
+  font-size: 0.92rem;
+}
+
+.section {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label,
+.heading {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  border-radius: var(--radius);
+}
+
+.heading:hover {
+  color: var(--text);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  line-height: 1.35;
+}
+
+.link:hover {
+  background: var(--surface);
+}
+
+.active,
+.active:hover {
+  color: var(--accent-text);
+  background: var(--accent-tint);
+  font-weight: 600;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px 8px 6px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  text-align: left;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.groupToggle:hover {
+  background: var(--surface);
+}
+
+.chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform 150ms ease;
+}
+
+.chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  list-style: none;
+  margin: 0 0 6px 15px;
+  padding: 0 0 0 8px;
+  border-left: 1px solid var(--border);
+}
+
+.list .link {
+  font-size: 0.9rem;
+}
+
+/* Mouse-sized targets on desktop; phones keep 44px. */
+@media (min-width: 1024px) and (pointer: fine) {
+  .link,
+  .groupToggle {
+    min-height: 36px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}

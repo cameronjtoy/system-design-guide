@@ -1,0 +1,120 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) max(var(--gutter), env(safe-area-inset-right)) 0
+    max(calc(var(--gutter) - 10px), env(safe-area-inset-left));
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: saturate(1.2) blur(10px);
+  -webkit-backdrop-filter: saturate(1.2) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.brand span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 639px) {
+  .brand {
+    gap: 8px;
+    font-size: 0.94rem;
+  }
+}
+
+.actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.iconButton {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  background: var(--surface);
+}
+
+.search {
+  composes: iconButton;
+}
+
+.searchLabel,
+.kbd {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .header {
+    padding-left: max(var(--gutter), env(safe-area-inset-left));
+  }
+
+  .search {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: auto;
+    height: 38px;
+    min-width: 200px;
+    padding: 0 8px 0 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-right: 4px;
+  }
+
+  .search:hover {
+    border-color: var(--border-strong);
+    background: var(--surface);
+  }
+
+  .searchLabel {
+    display: inline;
+    margin-right: auto;
+  }
+
+  .kbd {
+    display: inline;
+    font-family: var(--font-sans);
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+}
+
+@media (min-width: 1024px) {
+  .menu {
+    display: none;
+  }
+}

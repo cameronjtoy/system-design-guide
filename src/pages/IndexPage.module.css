@@ -1,0 +1,97 @@
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.8rem, 1.3rem + 2.2vw, 2.4rem);
+  letter-spacing: -0.025em;
+}
+
+.header p {
+  margin: 0;
+  max-width: 640px;
+  color: var(--text-muted);
+}
+
+.filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* One swipeable row of chips on phones; wraps on larger screens. */
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 2px var(--gutter);
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .chips {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.chip {
+  flex: none;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (pointer: coarse) {
+  .chip {
+    min-height: 44px;
+  }
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+
+.section {
+  margin-top: 36px;
+}
+
+.section h2 {
+  margin: 0 0 4px;
+  font-size: 1.3rem;
+}
+
+.sectionLead {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.empty {
+  color: var(--text-muted);
+}
