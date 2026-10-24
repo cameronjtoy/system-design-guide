@@ -49,8 +49,12 @@ Every postmortem: **What happened → Root cause → What changed → Lessons**,
 
 Each phase branches from the previous one, and its PR targets the previous phase's branch. Merge them in order, starting with phase 1 into `main`.
 
+## Status
+
+All six phases are implemented: 74 principles, 20 postmortems, 19 case studies, 6 practice problems, 5 learning paths, progress tracking and a reading list. Possible next steps: an installable PWA with offline reading, more practice problems, and periodic link checks of cited sources.
+
 ## Content rules
 
 - Summaries are original writing that link to the source; no large quoted passages.
 - Facts and figures come from the cited source.
-- Cross-references to pages a later phase adds produce a build warning, not an error, until phase 6 makes the check strict.
+- Every cross-reference must resolve: the build runs the content check in strict mode.

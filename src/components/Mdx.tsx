@@ -23,6 +23,16 @@ export function Callout({ type = 'note', title, children }: { type?: CalloutKind
   )
 }
 
+/** A collapsible block for hints and solutions in practice problems. */
+export function Reveal({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <details className={styles.reveal}>
+      <summary className={styles.revealSummary}>{title}</summary>
+      <div className={styles.revealBody}>{children}</div>
+    </details>
+  )
+}
+
 /** Internal links go through the router; external ones open in a new tab. */
 function Anchor({ href = '', children, ...rest }: ComponentProps<'a'>) {
   if (href.startsWith('/')) return <Link to={href}>{children}</Link>
@@ -67,4 +77,5 @@ export const mdxComponents: MDXComponents = {
   pre: Pre,
   table: Table,
   Callout,
+  Reveal,
 }

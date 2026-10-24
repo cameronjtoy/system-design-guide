@@ -1,5 +1,8 @@
 import { Link } from 'react-router'
 import { CATEGORIES } from '../content/meta'
+import { PATHS, pathSteps } from '../content/paths'
+import { countLearned, useLearned } from '../lib/progress'
+import { ProgressBar } from '../components/ProgressBar'
 import { caseStudies, entryPath, postmortems, principles, principlesInCategory } from '../lib/content'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { CardGrid, EntryCard } from '../components/EntryCard'
@@ -9,6 +12,7 @@ import styles from './Home.module.css'
 export function Home() {
   useDocumentTitle()
   const first = principles[0]
+  const learned = useLearned()
 
   const stats = [
     { value: principles.length, label: 'Principles' },
@@ -45,6 +49,25 @@ export function Home() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <h2>Learning paths</h2>
+          <Link to="/paths">All paths</Link>
+        </div>
+        <div className={styles.paths}>
+          {PATHS.map((p) => {
+            const steps = pathSteps(p)
+            return (
+              <Link key={p.slug} to={`/paths/${p.slug}`} className={styles.path}>
+                <span className={styles.pathTitle}>{p.title}</span>
+                <span className={styles.pathMeta}>{p.duration}</span>
+                <ProgressBar done={countLearned(steps, learned)} total={steps.length} label={`${p.title} progress`} />
+              </Link>
+            )
+          })}
+        </div>
       </section>
 
       <section className={styles.section}>

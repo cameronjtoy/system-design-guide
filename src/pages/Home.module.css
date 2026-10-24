@@ -192,3 +192,35 @@ a.topic:hover {
   max-width: 640px;
   color: var(--text-muted);
 }
+
+.paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+
+.path {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.path:hover {
+  border-color: var(--accent-soft);
+}
+
+.pathTitle {
+  font-weight: 620;
+}
+
+.pathMeta {
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
