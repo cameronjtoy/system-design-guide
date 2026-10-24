@@ -1,0 +1,50 @@
+---
+title: WhatsApp's two million connections per server
+summary: WhatsApp served hundreds of millions of users with a famously small team by running Erlang on carefully tuned FreeBSD servers, reaching over two million simultaneous connections on a single machine in 2012.
+company: WhatsApp
+year: 2012
+principles: [vertical-vs-horizontal-scaling, latency-vs-throughput, load-balancing, back-of-the-envelope-estimation]
+tags: [erlang, freebsd, connections, c10k, messaging]
+sources:
+  - title: 1 million is so 2011 (WhatsApp blog, 2012)
+    url: https://blog.whatsapp.com/1-million-is-so-2011
+  - title: How WhatsApp Grew to Nearly 500 Million Users, 11,000 cores, and 70 Million Messages a Second (High Scalability)
+    url: https://highscalability.com/how-whatsapp-grew-to-nearly-500-million-users-11000-cores-an/
+---
+
+## The problem
+
+A messaging app keeps a persistent connection open for every online user, so messages can be pushed instantly. With hundreds of millions of users, that's hundreds of millions of mostly idle TCP connections, plus the work of routing messages between them.
+
+Holding a connection is cheap per user but expensive in aggregate. The number of connections each server can handle directly sets the size, and cost, of the fleet.
+
+## The approach
+
+### Erlang
+
+WhatsApp's chat servers were written in **Erlang**, a language built at Ericsson for telephone switches.
+
+- Erlang runs **millions of lightweight processes** in a single virtual machine, so each connection can have its own process without the memory cost of OS threads.
+- Processes communicate by message passing and don't share memory, which fits a messaging system naturally.
+- Supervision trees restart crashed processes automatically, and code can be **hot-swapped** without dropping connections.
+
+### Tuned FreeBSD on large machines
+
+WhatsApp ran on FreeBSD and tuned the kernel and Erlang VM carefully: file descriptor limits, network buffers, and fixing contention points inside the Erlang runtime as they found them.
+
+In September 2011 WhatsApp reported over **1 million** established TCP connections on one server. In January 2012 it reported **2,277,845** simultaneous connections on one machine, a 24-logical-core server running FreeBSD 8.2 and Erlang R14B03, with CPU and memory to spare.
+
+## Scaling the team, not just the servers
+
+Because each server did so much, WhatsApp needed relatively few machines, and a very small engineering team could run a service for hundreds of millions of users. By 2014, High Scalability reported WhatsApp handling hundreds of millions of users across around 11,000 CPU cores.
+
+Later, WhatsApp deliberately ran **fewer connections per server than the maximum**, keeping headroom for traffic spikes, failures and routine maintenance. The record proved what was possible; production needed slack.
+
+## What to take away
+
+<Callout type="tip" title="Key takeaways">
+- **Pick a runtime that fits the workload.** Lightweight processes and message passing match millions of mostly idle connections.
+- **Vertical efficiency reduces operational load.** Fewer, more capable servers mean fewer things to manage.
+- **Benchmark the limit, then run below it.** Headroom is what absorbs spikes and failures.
+- **Profile the whole stack.** Many gains came from fixing kernel and VM bottlenecks, not application code.
+</Callout>

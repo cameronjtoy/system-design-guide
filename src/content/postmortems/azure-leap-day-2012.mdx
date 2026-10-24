@@ -1,0 +1,47 @@
+---
+title: Azure's leap day certificate bug
+summary: Azure generated certificates valid for "one year from today" by adding 1 to the year. On February 29, 2012, that produced February 29, 2013, a date that doesn't exist, and new virtual machines failed to start across the platform.
+company: Microsoft Azure
+date: 2012-02-29
+duration: Most of a day, with some issues lingering longer
+impact: Windows Azure Compute couldn't start or manage virtual machines in many clusters; dependent services like Access Control, Service Bus and Caching were affected. Microsoft issued a 33% service credit.
+principles: [progressive-delivery, clocks-and-ordering, graceful-degradation, timeouts-retries-and-backoff]
+tags: [leap-year, dates, certificates, testing, cascading-failure]
+sources:
+  - title: Summary of Windows Azure Service Disruption on Feb 29th, 2012
+    url: https://azure.microsoft.com/en-us/blog/summary-of-windows-azure-service-disruption-on-feb-29th-2012/
+---
+
+## What happened
+
+When Azure starts a virtual machine, an agent inside the VM (the guest agent) creates a **transfer certificate** used to communicate securely with the host. The certificate is meant to be valid for one year.
+
+The code calculated the expiry date by taking today's date and **adding one to the year**. On February 29, 2012, that meant an expiry of **February 29, 2013**, which doesn't exist. Certificate creation failed.
+
+## How it spread
+
+- A guest agent that couldn't create its certificate failed to initialize. The host waited, then **retried by restarting the VM**, which failed again.
+- After three such failures, the host concluded the **hardware** must be faulty and marked the server as bad, moving its workloads elsewhere, where they hit the same bug.
+- As more servers were wrongly marked as faulty, clusters ran low on healthy capacity. Azure's automation then started moving more VMs, spreading the failure.
+- To stop it, Microsoft disabled service management (deploying, scaling and updating applications) across all clusters, so customers couldn't make changes, while running VMs mostly kept working.
+
+The problem started right as each region crossed midnight UTC on February 29, 2012 (late in the evening on February 28 in the US).
+
+## A second problem during recovery
+
+While rolling out a fix, Microsoft sped up deployment to some clusters by pushing a package that **combined the fix with an incompatible network plugin**. VMs in those clusters lost network connectivity, causing a second, separate outage for some customers. Recovering from that took several more hours.
+
+## What changed
+
+- Fixed the date calculation and audited code for similar date bugs.
+- Improved how the host distinguishes software failures from hardware failures, so a software bug doesn't cause healthy machines to be marked bad.
+- Made incident communication more frequent and less dependent on the affected systems.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Date and time code needs special testing.** Leap days, leap seconds, time zones and daylight-saving changes break naive arithmetic. Use proper date libraries, and test with clocks set to edge cases.
+- **Automatic remediation can amplify bugs.** Treating a software failure as bad hardware moved the bug around the fleet. Remediation needs rate limits and a check for "everything is failing the same way".
+- **Hurried fixes cause second outages.** Emergency deploys need just enough verification to avoid making things worse.
+- **Freeze changes to stop the bleeding.** Disabling management operations kept running workloads alive while engineers fixed the root cause.
+</Callout>

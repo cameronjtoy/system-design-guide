@@ -1,0 +1,55 @@
+---
+title: The DynamoDB DNS race condition that took down us-east-1
+summary: A latent race between two automated DNS processes left DynamoDB's regional endpoint with an empty DNS record. Anything that couldn't resolve DynamoDB failed, including AWS's own EC2 and load-balancer systems, in a cascade that lasted most of a day.
+company: Amazon Web Services
+date: 2025-10-19
+duration: About 15 hours, in three phases
+impact: DynamoDB in us-east-1 became unreachable through its public endpoint; EC2 instance launches failed and Network Load Balancers saw connection errors, affecting a long list of AWS services and thousands of customer apps worldwide.
+principles: [static-stability, cell-based-architecture, observability, timeouts-retries-and-backoff]
+tags: [dns, route53, race-condition, automation, us-east-1, cascading-failure]
+sources:
+  - title: Summary of the Amazon DynamoDB Service Disruption in the Northern Virginia (US-EAST-1) Region
+    url: https://aws.amazon.com/message/101925/
+---
+
+## What happened
+
+DynamoDB's regional endpoint, `dynamodb.us-east-1.amazonaws.com`, is backed by hundreds of thousands of DNS records that point clients at load balancers. Those records are managed by automation with two parts:
+
+- A **DNS Planner** watches load-balancer health and capacity and produces new DNS plans.
+- **DNS Enactors**, running independently in several availability zones for resilience, apply those plans to Amazon Route 53.
+
+At 11:48 PM PDT on October 19, the regional endpoint's DNS record became **empty**. Every client trying to reach DynamoDB in us-east-1 through its public endpoint got DNS failures.
+
+## Root cause
+
+AWS described a **latent race condition** in the DNS automation:
+
+1. One Enactor was running unusually slowly and was applying an **older** plan.
+2. Meanwhile, the Planner kept producing newer plans, and a second Enactor applied a **newer** plan, then ran a clean-up step that deletes plans considered too old.
+3. The slow Enactor's stale plan then overwrote the endpoint's records, and the clean-up step deleted that stale plan, removing **all** IP addresses for the endpoint and leaving the system in a state that the automation couldn't repair on its own.
+
+Engineers identified DynamoDB's DNS state as the cause by 12:38 AM and restored the DNS records by about 2:25 AM.
+
+## The cascade
+
+DynamoDB was back within about three hours, but AWS's own systems that depend on it had trouble recovering:
+
+- **EC2 launches:** the system that manages leases for the physical servers behind EC2 instances stored its state in DynamoDB. Leases expired during the outage, and when DynamoDB came back, the system faced a huge backlog and entered a congestive collapse, retrying work faster than it could complete it. New instance launches failed or were delayed until engineers throttled work and restarted hosts.
+- **Network Load Balancers:** newly launched instances weren't fully configured on the network, so NLB health checks flapped, removing and adding capacity, which caused connection errors.
+- Many other services (Lambda, ECS, Redshift, support tools and others) that rely on DynamoDB, EC2 or NLB were degraded until about 2:20 PM PDT on October 20.
+
+## What changed
+
+- Disabled the DynamoDB DNS Planner and Enactor automation worldwide until the race condition is fixed and additional safeguards are added, including protection against applying incorrect plans.
+- Added velocity controls to NLB so health-check failures can't remove too much capacity at once.
+- Improved EC2's lease-management recovery and added throttling based on queue size, plus test suites that exercise recovery from a large backlog.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Concurrent automation needs ordering guarantees.** Two independent workers applying plans need versioning or locks so an old plan can never overwrite a newer one.
+- **Automation should refuse obviously bad states.** "Delete every IP for the endpoint" should never pass a safety check.
+- **Recovery is its own load test.** Systems that worked fine in steady state collapsed when they faced hours of backlog at once. Throttle recovery work and test it.
+- **Shared dependencies chain together.** A database's DNS record ended up gating EC2 launches and load-balancer health in the same region.
+</Callout>

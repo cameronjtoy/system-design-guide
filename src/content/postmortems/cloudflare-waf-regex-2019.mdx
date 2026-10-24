@@ -1,0 +1,46 @@
+---
+title: Cloudflare's global outage from one regular expression
+summary: A new firewall rule with a badly behaved regular expression was pushed to every Cloudflare server at once, pinned CPUs at 100% worldwide and returned 502 errors for sites across the internet.
+company: Cloudflare
+date: 2019-07-02
+duration: 27 minutes
+impact: Cloudflare's HTTP/HTTPS proxy returned 502 errors globally; at the worst point traffic through the network dropped by about 82%.
+principles: [progressive-delivery, cell-based-architecture, graceful-degradation, observability]
+tags: [regex, waf, backtracking, global-deploy, cpu-exhaustion]
+sources:
+  - title: Details of the Cloudflare outage on July 2, 2019
+    url: https://blog.cloudflare.com/details-of-the-cloudflare-outage-on-july-2-2019/
+---
+
+## What happened
+
+At 13:42 UTC, Cloudflare engineers deployed a routine update to the managed rules of its web application firewall (WAF). One new rule was meant to improve blocking of inline JavaScript used in attacks. Within seconds, CPU usage on every machine handling HTTP traffic jumped to nearly 100%, and Cloudflare's proxy started returning 502 errors for customer sites around the world.
+
+The team issued a "global kill" that disabled the WAF managed rulesets at 14:07 UTC, which brought traffic back. After fixing the rule, they re-enabled the WAF at 14:52 UTC.
+
+## Root cause
+
+The new rule contained a regular expression that caused **catastrophic backtracking**. Part of the pattern looked like `.*(?:.*=.*)`: two greedy wildcards around an `=`. For certain inputs, the regex engine tries an enormous number of ways to match before failing, and the time grows explosively with the input length. Every HTTP request passing through the WAF triggered that work.
+
+Several things that should have limited the damage didn't:
+
+- **The rule went everywhere at once.** WAF rules used a fast global deployment path, designed so Cloudflare could respond to new attacks within minutes. There was no staged rollout to a few machines first.
+- **It was tested in "simulate" mode,** which logs matches without blocking. But simulate mode still runs the regex, so it consumed CPU everywhere just the same.
+- **A safety limit had been removed.** A protection against excessive CPU use by regular expressions had been removed by mistake weeks earlier during a refactoring of the WAF.
+- **The regex engine had no complexity guarantees.** It allowed backtracking with no runtime limit.
+
+## What changed
+
+- Moved toward regex engines with guaranteed linear-time matching (such as RE2 or Rust's regex crate), which don't backtrack.
+- Changed WAF rule deployments to use staged, progressive rollouts like other software, while keeping an emergency path for active attacks.
+- Restored and improved CPU protection so a single rule can't consume a whole machine.
+- Made it easier to globally disable the WAF quickly, and improved access to internal tools during outages.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **"Fast path" deploys are still deploys.** Config and rule pushes need staged rollouts and canaries, just like code. A change that reaches every server in seconds can break every server in seconds.
+- **Simulation that runs the code isn't safe.** Dry-run modes should still be rolled out gradually.
+- **Bound the cost of untrusted or complex work.** Regexes, queries and scripts on the request path need time or step limits.
+- **Have a big red button.** The global kill switch turned a potentially hours-long outage into 27 minutes.
+</Callout>

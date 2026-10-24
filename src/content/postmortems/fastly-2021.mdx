@@ -1,0 +1,47 @@
+---
+title: One customer's valid config change breaks Fastly
+summary: A latent bug shipped weeks earlier was triggered by an ordinary customer configuration change, and 85% of Fastly's network started returning errors. Fast detection and a quick disable limited the outage to under an hour.
+company: Fastly
+date: 2021-06-08
+duration: 49 minutes until 95% of the network recovered
+impact: Major websites including news outlets, government sites, Amazon, Reddit and others served errors for most of an hour, since 85% of Fastly's network returned errors.
+principles: [progressive-delivery, observability, graceful-degradation]
+tags: [cdn, latent-bug, configuration, edge, detection]
+sources:
+  - title: Summary of June 8 outage (Fastly)
+    url: https://www.fastly.com/blog/summary-of-june-8-outage
+---
+
+## What happened
+
+On May 12, 2021, Fastly deployed a software release to its edge network. It contained a bug that only appeared under a specific set of conditions, so nothing went wrong at the time.
+
+On June 8 at 09:47 UTC, a customer pushed a **valid** configuration change, exactly the kind of change customers make all the time. It happened to meet the conditions for the bug, and **85% of Fastly's network began returning errors**. Because Fastly serves as a CDN for many large sites, much of the web appeared to go down at once.
+
+## Response
+
+- Fastly detected the disruption **within one minute** through its monitoring.
+- Engineers identified the triggering configuration and disabled it.
+- By 10:36 UTC, 49 minutes after the start, 95% of the network was operating normally.
+- A permanent fix for the underlying bug began rolling out later that day.
+
+Fastly's head of engineering wrote that the bug "should have been anticipated" and that the company would look at why testing hadn't caught it.
+
+## Root cause
+
+The root cause was a software defect, not the customer's change. The change was a legitimate use of the product; the bug in Fastly's code turned it into a global failure. Because customer configurations are pushed to every edge location quickly, one customer's settings could reach the code path everywhere at once.
+
+## What changed
+
+- Deployed the bug fix across the network.
+- Committed to reviewing why the bug wasn't caught in testing, and to improving its deployment and testing processes.
+- Looked at ways to limit how far a single configuration can affect the network, and to speed up recovery.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Latent bugs hide behind rare inputs.** A release can look healthy for weeks until an unusual but valid input arrives. Fuzzing and testing with real-world configurations help.
+- **Customer input is a deploy path.** When users can change behaviour on your shared infrastructure, their changes need the same blast-radius limits as your own.
+- **Detection speed sets the floor on outage length.** One minute to detect and a quick disable kept this to under an hour.
+- **Shared infrastructure concentrates risk.** Thousands of companies depending on one provider means one bug can take down a large part of the web at once.
+</Callout>

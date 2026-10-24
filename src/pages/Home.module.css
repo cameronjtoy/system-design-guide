@@ -186,3 +186,9 @@ a.topic:hover {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
+.deeper {
+  margin: 0;
+  max-width: 640px;
+  color: var(--text-muted);
+}

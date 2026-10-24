@@ -1,0 +1,45 @@
+---
+title: How Slack moved its databases to Vitess
+summary: Slack outgrew workspace-sharded MySQL pairs when its largest customers became hot spots. Over three years it moved to Vitess, which lets each table choose its own shard key, and reached 2.3 million queries per second.
+company: Slack
+year: 2020
+principles: [sharding-and-partitioning, replication, vertical-vs-horizontal-scaling, data-modeling-and-denormalization]
+tags: [vitess, mysql, sharding, hot-shards, migration]
+sources:
+  - title: Scaling Datastores at Slack with Vitess
+    url: https://slack.engineering/scaling-datastores-at-slack-with-vitess/
+---
+
+## The problem
+
+Slack originally sharded its MySQL databases **by workspace**: all data for one workspace lived on one shard, run as a pair of active-active MySQL servers. It was simple, and nearly every query naturally stayed on one shard.
+
+As Slack grew, two things broke the model:
+
+- **Hot shards.** Large enterprise customers became so busy that a single workspace could overwhelm its shard, and splitting one workspace across shards wasn't possible.
+- **Features that cross workspaces.** Shared channels between companies and Enterprise Grid (many linked workspaces) didn't fit a world where each workspace was an island.
+
+The active-active pairs also made consistency tricky, and scaling meant a lot of custom application logic for routing.
+
+## The design: Vitess
+
+**Vitess** is an open-source system, originally built at YouTube, that sits in front of MySQL and makes many MySQL servers look like one database.
+
+- Applications connect to **VTGate**, a proxy that parses each query and routes it to the right shards.
+- Each table can have its own **shard key** (a "vindex"). Messages can be sharded by channel, users by user ID, and so on, instead of everything by workspace.
+- Vitess manages replication, failover and **resharding**, splitting a busy shard into several while the system stays online.
+
+## The migration
+
+Slack started in 2017 and moved table by table. For each table, the team chose a new shard key based on its access patterns, used double writes and backfills to copy data, compared results between old and new, and then cut reads and writes over. By late 2020, Vitess served **99% of Slack's query load**.
+
+At that point Slack reported serving **2.3 million queries per second at peak**, about 2 million reads and 300,000 writes, with a **median latency of 2 ms and p99 of 11 ms**. Slack also became one of the largest contributors to the Vitess project.
+
+## What to take away
+
+<Callout type="tip" title="Key takeaways">
+- **A tenant-based shard key works until one tenant is huge.** Plan for splitting the biggest customers.
+- **Different tables want different shard keys.** A routing layer that supports per-table keys avoids forcing everything into one partitioning scheme.
+- **Use a proxy layer to hide sharding from applications,** so data can be resharded without code changes.
+- **Big migrations are table-by-table journeys.** Slack's took three years, done incrementally and verified at each step.
+</Callout>

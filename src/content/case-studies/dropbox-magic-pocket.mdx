@@ -1,0 +1,42 @@
+---
+title: Dropbox leaves the cloud with Magic Pocket
+summary: Dropbox moved the vast majority of its users' files off Amazon S3 onto Magic Pocket, a custom exabyte-scale storage system on its own hardware, because at its scale owning the stack meant better economics and control.
+company: Dropbox
+year: 2016
+principles: [object-storage, replication, backups-and-disaster-recovery, vertical-vs-horizontal-scaling]
+tags: [storage, erasure-coding, hardware, migration, s3]
+sources:
+  - title: Magic Pocket infrastructure (Dropbox Tech Blog)
+    url: https://dropbox.tech/infrastructure/magic-pocket-infrastructure
+---
+
+## The problem
+
+For years Dropbox stored file contents in Amazon S3 while keeping metadata in its own data centers. That worked well while Dropbox was growing quickly. But storage was by far its biggest infrastructure cost, and file contents were a workload Dropbox understood extremely well: mostly immutable blocks, written once and read occasionally.
+
+At that scale, paying a general-purpose provider's margins on hundreds of petabytes was expensive, and Dropbox wanted more control over performance and hardware.
+
+## The design
+
+Magic Pocket is an object store specialized for Dropbox's file blocks:
+
+- Files are split into **blocks** (up to 4 MB), addressed by a hash of their content, which also gives deduplication for free.
+- Blocks are written to multiple storage nodes and zones, then **erasure-coded** in the background, which stores data with much less overhead than full copies while still surviving disk, machine and zone failures.
+- Data is replicated across geographically separate regions.
+- Dropbox designed its own **high-density storage servers**, packing very large numbers of disks per machine, and later adopted shingled magnetic recording (SMR) drives for more density.
+- Much of the system was written in Go, with performance-critical parts later rewritten in Rust.
+
+## The migration
+
+Moving an exabyte-scale dataset while users kept reading and writing files meant copying data in bulk in the background, verifying it continuously, and keeping S3 in place as the source of truth until each piece of data was confirmed in Magic Pocket. Reads shifted over gradually as confidence grew.
+
+In 2016 Dropbox announced that the vast majority of user data was now stored in Magic Pocket. Dropbox continued to use AWS for some workloads and regions.
+
+## What to take away
+
+<Callout type="tip" title="Key takeaways">
+- **At enough scale, specialization pays.** A storage system built for one access pattern can beat a general-purpose one on cost.
+- **Erasure coding is how large stores stay durable affordably.** It offers durability like replication at a fraction of the storage overhead.
+- **Content addressing simplifies everything:** deduplication, integrity checks and immutability come together.
+- **"Build vs buy" changes as you grow.** The cloud made sense early; owning the stack made sense later.
+</Callout>

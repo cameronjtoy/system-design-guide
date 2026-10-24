@@ -1,0 +1,47 @@
+---
+title: An automatic OS update takes Datadog offline in every region
+summary: An Ubuntu security update to systemd was applied automatically to tens of thousands of Datadog's nodes within the same hour. It restarted networking in a way that wiped container routes, knocking nodes offline across several clouds and regions at once.
+company: Datadog
+date: 2023-03-08
+impact: Datadog's monitoring service was degraded or unavailable in all its regions (US1, EU1, US3, US4, US5) across AWS, Azure and Google Cloud, with data delays and gaps while it recovered.
+principles: [static-stability, progressive-delivery, cell-based-architecture]
+tags: [unattended-upgrades, systemd, cilium, kubernetes, multi-cloud]
+sources:
+  - title: "2023-03-08 Incident: Infrastructure connectivity issue affecting multiple regions (Datadog)"
+    url: https://www.datadoghq.com/blog/2023-03-08-multiregion-infrastructure-connectivity-issue/
+  - title: "2023-03-08 Incident: A deep dive into the platform-level impact (Datadog)"
+    url: https://www.datadoghq.com/blog/engineering/2023-03-08-deep-dive-into-platform-level-impact/
+---
+
+## What happened
+
+Starting at 06:03 UTC on March 8, 2023, tens of thousands of nodes in Datadog's Kubernetes clusters lost network connectivity within about an hour. Because Datadog runs separate regions on different cloud providers specifically to avoid shared failures, a simultaneous outage in every region was supposed to be impossible.
+
+## Root cause
+
+Datadog's nodes ran Ubuntu 22.04, configured to install **security updates automatically** through Ubuntu's unattended-upgrades mechanism, a common best practice. On March 8, a security update to **systemd** was published and installed on nodes everywhere during the same window.
+
+When the update was applied, `systemd-networkd` restarted, and on this version its restart **flushed network routes and rules it didn't manage**, including the ones created by **Cilium**, the networking plugin that handles traffic between containers. Nodes lost the routes they needed and dropped out of their clusters.
+
+The update went out on **every region and every cloud at once**, because the only thing pacing it was Ubuntu's release schedule and the time each node checked for updates, not Datadog's own staged rollout process.
+
+## Why recovery took a long time
+
+- Losing a large share of nodes at once overwhelmed the systems meant to replace them, and the affected nodes had to be restarted or replaced at a scale those systems weren't sized for.
+- Each cloud provider needed different recovery actions: on some, pod and host traffic were affected; on others, mainly host traffic.
+- Restoring the data pipeline and processing the backlog of delayed data took much longer than restoring connectivity.
+
+## What changed
+
+- **Disabled the automatic update channel** that delivered the change, so OS updates go through Datadog's own controlled rollout process, region by region.
+- Changed network configuration so a `systemd-networkd` restart can't remove routes that other components manage.
+- Prioritized faster recovery for losing large fractions of compute at once, and better ways to keep serving live data during recovery.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Automatic updates are deployments you didn't schedule.** Even security patches should go through staged rollout, or at least be spread out over time and regions.
+- **Independent regions aren't independent if they share a change source.** Same OS image plus same update channel equals a global single point of failure.
+- **Components that share the network stack must not undo each other.** One daemon wiping another's routes is a classic integration failure; test restarts of each component.
+- **Plan for losing most of your fleet at once.** Recovery systems sized for a few failed nodes don't cope with tens of thousands.
+</Callout>

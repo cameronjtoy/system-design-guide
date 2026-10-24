@@ -74,6 +74,10 @@ Recommended sections: *What happened*, *Root cause*, *What changed*, *Lessons*.
 
 `src/content/case-studies/<slug>.mdx` with `company`, `year` (number) and `principles` in place of the postmortem fields.
 
+### Reading list
+
+`src/content/reading.ts` holds the curated links shown at `/#/reading`, grouped into engineering blogs, incident report collections, papers, books and UI design systems. Prefer primary sources written by the people who built the system.
+
 ### Components available in MDX
 
 - `<Callout type="tip | example | warning | interview | note" title="Optional">…</Callout>`
