@@ -1,0 +1,76 @@
+---
+title: Back-of-the-envelope estimation
+summary: Quick order-of-magnitude math for traffic, storage and bandwidth tells you whether a design needs one server or a thousand before you draw a single box.
+difficulty: beginner
+order: 2
+tags: [estimation, capacity-planning, qps, storage, interviews]
+companies: [Google]
+related: [latency-vs-throughput, vertical-vs-horizontal-scaling, sharding-and-partitioning, availability-and-the-nines]
+sources:
+  - title: Latency numbers every programmer should know
+    url: https://gist.github.com/jboner/2841832
+---
+
+## The problem it solves
+
+Whether a system needs one database or a sharded cluster, one region or five, depends on numbers: how many requests, how much data, how fast it grows. Guessing wrong either way is expensive. Over-engineer and you build complexity you don't need; under-engineer and you rebuild under pressure.
+
+Rough estimates, accurate to within a factor of 10, are enough to pick the right architecture.
+
+## How it works
+
+### Numbers worth memorizing
+
+| Quantity | Approximate value |
+|---|---|
+| Seconds in a day | ~86,400 ≈ **10⁵** |
+| Seconds in a month | ~2.6 million ≈ **2.5 × 10⁶** |
+| Memory reference | ~100 ns |
+| Read 1 MB sequentially from memory | ~250 µs in the classic list; a few µs on modern hardware |
+| SSD random read | ~16–150 µs |
+| Round trip in the same datacenter | ~0.5 ms |
+| Round trip across a continent | ~50–150 ms |
+
+Powers of two: 2¹⁰ ≈ a thousand (KB), 2²⁰ ≈ a million (MB), 2³⁰ ≈ a billion (GB), 2⁴⁰ ≈ a trillion (TB).
+
+### The method
+
+1. **Start from users.** Daily active users × actions per user per day = actions per day.
+2. **Convert to per second.** Divide by 10⁵. Multiply by a **peak factor** of 2–10× for busy hours or events.
+3. **Split reads and writes.** Most products are read-heavy, often 10:1 to 100:1.
+4. **Estimate storage.** Writes per day × bytes per record × retention × replication factor.
+5. **Estimate bandwidth.** Requests per second × response size.
+6. **Compare to what one machine can do,** then divide to get a server count.
+
+### Worked example: a URL shortener
+
+- 100 million new short links per month → 100M ÷ 2.5M s ≈ **40 writes/sec** (peak ~200).
+- Reads at 100:1 → **4,000 reads/sec** (peak ~20,000).
+- Each record ~500 bytes; keep 5 years → 100M × 60 months × 500 B = **3 TB**, ~9 TB with 3× replication.
+- 20,000 reads/sec is a lot for one database but easy for a cache. A few cache nodes plus a modest database cluster is enough, and the 3 TB fits on a handful of machines.
+
+That conclusion took two minutes and rules out designs that would be far too big or too small.
+
+## Trade-offs
+
+- **Precision is not the goal.** Round aggressively. 86,400 becomes 100,000. The answer only needs to land in the right order of magnitude.
+- **The peak matters more than the average.** Systems fall over at peak, so size for it, and say which peak you mean (daily, Black Friday, a celebrity post).
+- **State your assumptions out loud.** An estimate is only as good as its inputs, and saying them lets others correct you.
+
+## In the real world
+
+<Callout type="example" title="Where the latency list comes from">
+The latency table that circulates as "numbers every programmer should know" traces back to talks by Google's Jeff Dean. He used it to argue that engineers should be able to estimate a design's performance on paper before building it, for example by comparing reading a thumbnail page from disk versus memory.
+</Callout>
+
+Capacity planning in production uses the same approach with real data: measure the current per-server throughput under load, project growth, and add headroom so a single machine or zone failing doesn't push the rest past their limits.
+
+## Interview angle
+
+<Callout type="interview">
+Do the estimate early, out loud, and use it. "40 writes per second means a single primary database is fine; 20,000 reads per second means we want a cache." An estimate that never changes your design wasn't worth doing.
+</Callout>
+
+- Forgetting replication and indexes when estimating storage.
+- Ignoring peak traffic.
+- Spending ten minutes on exact arithmetic instead of rounding.

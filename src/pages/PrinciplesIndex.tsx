@@ -78,7 +78,7 @@ export function PrinciplesIndex() {
             <p className={styles.sectionLead}>{c.description}</p>
             <CardGrid>
               {items.map((p) => (
-                <EntryCard key={p.slug} entry={p} />
+                <EntryCard key={p.slug} entry={p} showEyebrow={false} />
               ))}
             </CardGrid>
           </section>

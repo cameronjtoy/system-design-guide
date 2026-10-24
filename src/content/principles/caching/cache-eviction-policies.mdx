@@ -1,0 +1,69 @@
+---
+title: Cache eviction policies
+summary: When a cache is full, the eviction policy decides what to throw out. LRU is the usual default; LFU and modern variants like TinyLFU keep popular items better, and TTLs bound staleness.
+difficulty: beginner
+order: 2
+tags: [lru, lfu, ttl, tinylfu, redis, eviction, hit-rate]
+companies: [Redis, Meta]
+related: [caching-strategies, cache-invalidation, multi-tier-caching, cache-stampede]
+sources:
+  - title: Key eviction (Redis docs)
+    url: https://redis.io/docs/latest/develop/reference/eviction/
+  - title: Caffeine efficiency (W-TinyLFU)
+    url: https://github.com/ben-manes/caffeine/wiki/Efficiency
+---
+
+## The problem it solves
+
+Caches are small relative to the data behind them; that's the point. Once memory is full, every new item means removing an old one. Remove the wrong items and the hit rate drops, the backing database gets more traffic, and latency rises. A few percentage points of hit rate can be the difference between a healthy database and an overloaded one.
+
+## How it works
+
+| Policy | Evicts | Good at | Weak at |
+|---|---|---|---|
+| **LRU** (least recently used) | The item untouched for longest | Recency-heavy workloads; simple | A one-off scan flushes out hot items |
+| **LFU** (least frequently used) | The item with the fewest accesses | Stable popularity | Slow to forget items that *used* to be popular |
+| **FIFO** | The oldest inserted item | Simplicity, very low overhead | Ignores popularity |
+| **Random** | Any item | Cheap; surprisingly decent | Unpredictable |
+| **TTL expiry** | Items past their time-to-live | Bounding staleness | Not an eviction policy on its own |
+| **W-TinyLFU** | Admits new items only if likely more popular than the victim | Near-optimal hit rates for mixed workloads | More complex |
+
+### LRU in practice
+
+A classic LRU is a hash map plus a doubly linked list: every access moves an item to the front, and eviction takes from the back. Both are O(1).
+
+Exact LRU needs a pointer update on every read, which is costly under heavy concurrency, so real systems approximate it:
+
+- **Redis** samples a handful of keys (5 by default, set by `maxmemory-samples`) and evicts the least recently used among them, with a pool of good candidates carried between rounds. It behaves very close to true LRU with no linked list.
+- **CLOCK** keeps a "recently used" bit per item and sweeps a pointer around a circular buffer; operating systems use it for page caches.
+
+### Redis eviction settings
+
+`maxmemory` sets the limit and `maxmemory-policy` picks the behaviour, for example:
+
+- `allkeys-lru` or `allkeys-lfu`: evict from all keys. The usual choice for a pure cache.
+- `volatile-lru` / `volatile-ttl`: evict only keys that have a TTL set, protecting keys without one.
+- `noeviction`: reject writes when full. Right for a datastore, wrong for a cache.
+
+## Trade-offs
+
+- **Workload decides.** Recency-heavy access (sessions, news) suits LRU. Long-lived popularity (product catalog, popular videos) suits LFU-style policies. Scans and batch jobs poison plain LRU; scan-resistant policies such as segmented LRU or TinyLFU help.
+- **Memory overhead per item** (pointers, counters) matters when items are small.
+- **Eviction is not invalidation.** Eviction makes room; it doesn't make cached data correct. Use TTLs and [invalidation](/principles/cache-invalidation) for that.
+
+## In the real world
+
+<Callout type="example" title="Caffeine and W-TinyLFU">
+Caffeine, the widely used Java caching library, uses **W-TinyLFU**: a small LRU "window" admits new items, and a compact frequency sketch decides whether a new item is worth more than the one it would replace. Its published benchmarks on traces from databases, search engines and web caches show hit rates close to the theoretical optimum and well above plain LRU, especially on workloads with scans.
+</Callout>
+
+Large-scale caches at companies like Meta tune eviction per pool: separating keys by access pattern into different pools so that a flood of rarely-reused keys can't evict the hot set.
+
+## Interview angle
+
+<Callout type="interview">
+Name a policy and justify it from the access pattern, and mention TTLs separately as a staleness bound. If asked to implement LRU, use a hash map plus a doubly linked list for O(1) get and put.
+</Callout>
+
+- Using `noeviction` on a cache, so writes fail when memory fills.
+- Expecting eviction to keep data fresh.
