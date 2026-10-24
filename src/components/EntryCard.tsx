@@ -16,10 +16,17 @@ function eyebrow(entry: Entry): string {
   }
 }
 
-export function EntryCard({ entry, compact = false }: { entry: Entry; compact?: boolean }) {
+interface EntryCardProps {
+  entry: Entry
+  compact?: boolean
+  /** Hide the category/company line when the surrounding section already says it. */
+  showEyebrow?: boolean
+}
+
+export function EntryCard({ entry, compact = false, showEyebrow = true }: EntryCardProps) {
   return (
     <Link to={entryPath(entry)} className={styles.card} data-compact={compact}>
-      <span className={styles.eyebrow}>{eyebrow(entry)}</span>
+      {showEyebrow && <span className={styles.eyebrow}>{eyebrow(entry)}</span>}
       <span className={styles.title}>{entry.title}</span>
       {!compact && <span className={styles.summary}>{entry.summary}</span>}
       {!compact && entry.collection === 'principles' && (

@@ -1,0 +1,71 @@
+---
+title: Latency vs throughput
+summary: Latency is how long one request takes; throughput is how many requests finish per second. They trade off against each other, and Little's Law ties them to how much work is in flight.
+difficulty: beginner
+order: 1
+tags: [latency, throughput, littles-law, golden-signals, percentiles]
+companies: [Google]
+related: [tail-latency, back-of-the-envelope-estimation, backpressure-and-load-shedding, slis-slos-and-error-budgets]
+sources:
+  - title: Latency numbers every programmer should know
+    url: https://gist.github.com/jboner/2841832
+  - title: Monitoring Distributed Systems, the four golden signals (Google SRE book)
+    url: https://sre.google/sre-book/monitoring-distributed-systems/
+---
+
+## The problem it solves
+
+"Make it faster" can mean two different things. A user wants **their** request to finish quickly. An operator wants the system to handle **more** requests without falling over. Those goals often pull in opposite directions, and mixing them up leads to the wrong fix.
+
+## How it works
+
+- **Latency** is the time from sending a request to receiving the response, measured in milliseconds.
+- **Throughput** is the number of requests (or bytes) completed per unit of time, measured in requests per second or MB/s.
+
+A highway is a useful picture. Latency is how long one car takes to drive from A to B. Throughput is how many cars pass a point per minute. Adding lanes raises throughput without making any single car faster.
+
+### Little's Law
+
+For any stable system, the average number of requests in flight equals the arrival rate times the average time each one spends inside:
+
+```text
+in-flight requests = throughput × latency
+        L          =     λ      ×    W
+```
+
+If a service handles 2,000 requests per second at 50 ms each, it has about 100 requests in progress at any moment. This is how you size thread pools, connection pools and queues: a pool of 20 connections can't sustain 2,000 req/s at 50 ms.
+
+### The trade-off
+
+- **Batching** raises throughput (one disk write for 100 records) but adds latency (the first record waits for the batch to fill).
+- **Queueing** keeps machines busy, but as utilization approaches 100%, wait time grows sharply. A server at 50% utilization barely queues; at 95% the queue dominates latency.
+- **Parallelism** can improve both, until a shared resource such as a lock, a database or a network link becomes the bottleneck.
+
+### Measure latency as a distribution
+
+An average hides the requests users complain about. Report **percentiles**: p50 (median), p95, p99 and p99.9. A service with a 20 ms average can easily have a 2-second p99. See [tail latency](/principles/tail-latency).
+
+## Trade-offs
+
+| You optimize for | You accept | Typical systems |
+|---|---|---|
+| Low latency | Lower utilization, more idle capacity | Interactive APIs, trading, games |
+| High throughput | Higher, more variable latency | Batch jobs, log pipelines, analytics |
+| Both | Cost: more hardware, caching, careful design | Search, feeds, payments |
+
+## In the real world
+
+<Callout type="example" title="Google SRE: the four golden signals">
+Google's SRE book names **latency, traffic, errors and saturation** as the four signals to monitor for any user-facing system. Latency and traffic (throughput) are two of them, and saturation is the early warning that latency is about to climb. The book also warns to track the latency of failed requests separately, since a fast error can make averages look healthy.
+</Callout>
+
+The widely shared "latency numbers every programmer should know" list gives the orders of magnitude to reason with: a main-memory reference is about 100 ns, a round trip within a datacenter about 0.5 ms, and a packet from California to the Netherlands and back about 150 ms. No amount of server tuning beats the speed of light, which is why global services put data close to users.
+
+## Interview angle
+
+<Callout type="interview">
+State your latency target as a percentile ("p99 under 200 ms") and your throughput target as a peak ("50k reads/sec at peak"). Then use Little's Law to sanity-check pool and queue sizes. Interviewers notice when you distinguish the two instead of saying "it needs to be fast".
+</Callout>
+
+- Don't quote average latency as the goal.
+- When you add a queue or batch, say what it costs in latency.

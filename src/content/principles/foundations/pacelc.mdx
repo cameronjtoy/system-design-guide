@@ -1,0 +1,59 @@
+---
+title: PACELC
+summary: CAP only covers network partitions. PACELC adds the everyday trade-off, Else (no partition) choose Latency or Consistency, which shapes almost every replicated database.
+difficulty: advanced
+order: 7
+tags: [pacelc, cap, latency, consistency, replication, databases]
+companies: [Amazon, Google, Yahoo]
+related: [cap-theorem, consistency-models, replication, quorums]
+sources:
+  - title: Consistency Tradeoffs in Modern Distributed Database System Design (Daniel Abadi, IEEE Computer 2012)
+    url: https://www.cs.umd.edu/~abadi/papers/abadi-pacelc.pdf
+---
+
+## The problem it solves
+
+CAP tells you what happens during a network partition. But most of the time the network is fine, and you still have to decide something on every single request: **wait for replicas to agree, or answer now from whichever copy is closest?** That everyday decision affects users far more often than partitions do.
+
+## How it works
+
+Daniel Abadi proposed PACELC in 2012:
+
+> If there is a **P**artition, choose between **A**vailability and **C**onsistency;
+> **E**lse, choose between **L**atency and **C**onsistency.
+
+The "else" half exists because strong consistency requires coordination. A write has to reach a majority of replicas, possibly in other zones or regions, before it's acknowledged. That round trip costs latency on every request, partition or not.
+
+| System | During partition | Normal operation | Why |
+|---|---|---|---|
+| Dynamo, Cassandra, Riak (default settings) | PA | EL | Answer from any replica; repair later |
+| BigTable, HBase | PC | EC | Single owner per row range |
+| VoltDB / H-Store | PC | EC | Serializable transactions |
+| Yahoo PNUTS | PC | EL | Per-record master, but reads may be stale |
+| MongoDB (as described in 2012) | PA | EC | Single primary; failover can lose acknowledged writes |
+| Google Spanner | PC | EC | Paxos groups plus TrueTime; pays latency for global consistency |
+
+Many modern databases make this a **per-request knob**. In Cassandra and DynamoDB you choose a consistency level per read or write, trading latency against freshness for that call.
+
+## Trade-offs
+
+- **EL (latency-first)** gives fast, local reads and writes, but clients may read stale data and must tolerate it.
+- **EC (consistency-first)** gives simpler application logic, but every write pays cross-replica coordination, and cross-region writes may add 50–150 ms.
+- **Geography amplifies the choice.** Within one datacenter, strong consistency is cheap. Across continents, the speed of light makes it expensive.
+
+## In the real world
+
+<Callout type="example" title="DynamoDB: eventual by default, strong on request">
+DynamoDB reads are eventually consistent by default, which is cheaper and lower latency. Callers can request a strongly consistent read for a specific call, which costs twice the read capacity and always goes to the leader replica. Most of a typical application's reads can tolerate slight staleness; the few that can't (for example, reading back a balance right after updating it) opt in.
+</Callout>
+
+Abadi's paper argues that the latency/consistency trade-off, not the partition case, is what really drove the design of systems like Dynamo, Cassandra and PNUTS. Their designers relaxed consistency mainly to keep latency low during normal operation.
+
+## Interview angle
+
+<Callout type="interview">
+After you talk about CAP, add: "And when there's no partition, we still trade latency for consistency. For the timeline we'll read from the nearest replica and accept a few seconds of staleness; for account settings we'll read from the leader." That's the PACELC idea, applied per feature.
+</Callout>
+
+- Assuming strong consistency is free when the network is healthy.
+- Forgetting that cross-region synchronous replication puts a round trip on every write.

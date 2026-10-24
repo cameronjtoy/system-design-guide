@@ -59,21 +59,21 @@ function footerSections(entry: Entry): Section[] {
     const related = relatedPrinciples(entry)
     if (failures.length) {
       sections.push({
-        id: 'learn-from-failures',
+        id: 'auto-postmortems',
         title: 'Learn from failures',
         node: <CardGrid>{failures.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
       })
     }
     if (stories.length) {
       sections.push({
-        id: 'in-the-real-world',
-        title: 'In the real world',
+        id: 'auto-case-studies',
+        title: 'Case studies',
         node: <CardGrid>{stories.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
       })
     }
     if (related.length) {
       sections.push({
-        id: 'related-principles',
+        id: 'auto-related',
         title: 'Related principles',
         node: <CardGrid>{related.map((e) => <EntryCard key={e.slug} entry={e} compact />)}</CardGrid>,
       })
@@ -82,14 +82,14 @@ function footerSections(entry: Entry): Section[] {
     const involved = resolvePrinciples(entry.principles)
     if (involved.length) {
       sections.push({
-        id: 'principles-in-play',
+        id: 'auto-principles',
         title: 'Principles in play',
         node: <CardGrid>{involved.map((e) => <EntryCard key={e.slug} entry={e} compact />)}</CardGrid>,
       })
     }
   }
   if (entry.sources.length) {
-    sections.push({ id: 'sources', title: 'Sources', node: <SourceList sources={entry.sources} /> })
+    sections.push({ id: 'auto-sources', title: 'Sources', node: <SourceList sources={entry.sources} /> })
   }
   return sections
 }

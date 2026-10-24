@@ -1,0 +1,78 @@
+---
+title: Rate limiting
+summary: Rate limiting caps how many requests a client can make in a time window, protecting shared capacity from abuse, bugs and noisy neighbours. Token bucket and sliding window are the workhorse algorithms.
+difficulty: intermediate
+order: 6
+tags: [rate-limiting, token-bucket, sliding-window, quotas, http-429, redis]
+companies: [Stripe, Cloudflare, GitHub]
+related: [backpressure-and-load-shedding, api-gateways, timeouts-retries-and-backoff, api-design-and-versioning]
+sources:
+  - title: Scaling your API with rate limiters (Stripe)
+    url: https://stripe.com/blog/rate-limiters
+  - title: How we built rate limiting capable of scaling to millions of domains (Cloudflare)
+    url: https://blog.cloudflare.com/counting-things-a-lot-of-different-things/
+  - title: Rate limits (Stripe docs)
+    url: https://docs.stripe.com/rate-limits
+---
+
+## The problem it solves
+
+A single client, whether malicious, buggy or just enthusiastic, can send far more traffic than everyone else combined. A retry loop with no delay, a scraper or a credential-stuffing attack can starve legitimate users or knock the service over. Rate limits keep any one caller within a fair share.
+
+## How it works
+
+### Algorithms
+
+| Algorithm | How it works | Bursts | Memory per key |
+|---|---|---|---|
+| **Fixed window** | Count requests per calendar minute; reset at the boundary | Up to 2× at window edges | 1 counter |
+| **Sliding window log** | Store each request's timestamp; count those in the last N seconds | Exact | One entry per request |
+| **Sliding window counter** | Weighted mix of the current and previous fixed windows | Close to exact | 2 counters |
+| **Token bucket** | Bucket refills at rate *r* up to capacity *b*; each request takes a token | Allows bursts up to *b* | 2 numbers |
+| **Leaky bucket** | Requests queue and drain at a fixed rate | Smooths output | Queue |
+
+**Token bucket** is the most common: it allows short bursts (a page load firing 10 calls) while enforcing an average rate.
+
+```python
+def allow(key, rate=10, capacity=20):
+    tokens, last = store.get(key, (capacity, now()))
+    tokens = min(capacity, tokens + (now() - last) * rate)  # refill
+    if tokens < 1:
+        return False                                         # 429
+    store.set(key, (tokens - 1, now()))
+    return True
+```
+
+In a distributed system, the counters live in a shared store such as Redis, updated atomically (for example with a Lua script) so that many gateway instances enforce one limit.
+
+### What to limit by
+
+API key, user ID, IP address, or endpoint, often several at once ("100/s per key, and 10/s on the expensive search endpoint").
+
+### Telling clients
+
+Return **HTTP 429 Too Many Requests** with a `Retry-After` header, and ideally headers showing the limit and remaining quota so well-behaved clients can slow down before hitting it.
+
+## Trade-offs
+
+- **Accuracy vs cost.** Exact limits need a central counter checked on every request. Approximate local counters synced periodically are cheaper and usually good enough.
+- **Where to enforce.** At the edge (CDN or gateway) stops abuse cheapest; per service protects specific resources. Many systems do both.
+- **Fail open or closed?** If the rate-limit store is down, most systems let traffic through rather than block everyone.
+- **Rate limits aren't overload protection on their own.** Every client can be under its limit while the total still exceeds capacity. That's what [load shedding](/principles/backpressure-and-load-shedding) is for.
+
+## In the real world
+
+<Callout type="example" title="Stripe: four kinds of limiters">
+Stripe's engineering blog describes four limiters it runs in production. A **request rate limiter** (token bucket per user) handles most cases. A **concurrent request limiter** caps how many requests a user can have in flight, which protects expensive endpoints. Two **load shedders** go further: one reserves a share of capacity for critical requests (like creating charges) over less important ones, and another sheds lower-priority traffic when workers are saturated. The first two keep users fair; the last two keep the service alive.
+</Callout>
+
+Cloudflare's write-up on rate limiting millions of customer domains explains why it chose a **sliding window counter**: it needs only two numbers per key, it's accurate enough in practice, and it avoids the burst problem at fixed-window boundaries.
+
+## Interview angle
+
+<Callout type="interview">
+Asked to design a rate limiter? Cover: the key (user, IP, API key), the algorithm (token bucket for bursts), where state lives (Redis with atomic updates), where it runs (gateway), what clients see (429 + Retry-After), and what happens if Redis is down (fail open with local fallback limits).
+</Callout>
+
+- Fixed windows without mentioning the boundary burst.
+- Read-then-write counter updates that race under concurrency.
