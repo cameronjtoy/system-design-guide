@@ -1,0 +1,45 @@
+---
+title: The Kinesis outage caused by an operating system thread limit
+summary: Adding a small amount of capacity to Kinesis's front-end fleet pushed every server past an OS thread limit, because each server kept a thread per peer. Kinesis failed, and so did the AWS services built on top of it.
+company: Amazon Web Services
+date: 2020-11-25
+duration: About 17 hours
+impact: Kinesis Data Streams in us-east-1 failed, taking down or degrading Cognito, CloudWatch, Lambda, EventBridge, the AWS status page's update tools and many customer applications the day before US Thanksgiving.
+principles: [cell-based-architecture, static-stability, observability]
+tags: [kinesis, thread-limit, capacity, us-east-1, dependencies]
+sources:
+  - title: Summary of the Amazon Kinesis Event in the Northern Virginia (US-EAST-1) Region
+    url: https://aws.amazon.com/message/11201/
+---
+
+## What happened
+
+Kinesis Data Streams has a **front-end fleet** of many thousands of servers that handle authentication, throttling and routing requests to the right back-end cluster. Each front-end server keeps a cache of the "shard map", which stream shards live where, and builds it by talking to **every other front-end server**, using one operating-system thread per peer.
+
+Early on November 25, AWS added a relatively small amount of capacity to the front-end fleet. As every server learned about the new peers, each one needed more threads than before, and they **exceeded the maximum number of threads allowed by the operating system configuration**. Shard-map construction failed, front-end servers couldn't route requests, and Kinesis started returning errors.
+
+## Why recovery took most of the day
+
+- **Restarting was slow by design.** Front-end servers had to be restarted in small batches, because each restarting server competed for resources while rebuilding its view of the fleet. AWS could add only a few hundred servers back per hour.
+- **The capacity addition was the trigger, not the root cause.** The design meant thread usage grew with fleet size; the fleet had simply crossed a limit that had always been there.
+- **Kinesis turned out to be a deep dependency.** Cognito buffered data in Kinesis; CloudWatch used it for metrics and logs; Lambda and others depended on CloudWatch. The impact spread well beyond Kinesis users.
+- **Communication was hampered.** The tool used to post updates to the Service Health Dashboard depended on Cognito, which was down.
+
+Kinesis returned to normal at 10:23 PM PST, about 17 hours after the trigger.
+
+## What changed
+
+- Moved front-end servers to larger machines, reducing the total number of servers and therefore threads per server.
+- Added fine-grained alarming on thread consumption.
+- Started work to change how front-end servers learn about each other, so resource use doesn't grow with fleet size.
+- **Accelerated cellularization** of the front-end fleet, so each cell is small and a problem in one doesn't affect all.
+- Changed CloudWatch and Cognito to reduce their dependency on Kinesis, and moved the status page tooling off the affected dependency.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **All-to-all designs hit walls as they grow.** Anything that scales with N² (or one resource per peer) will eventually cross a limit. Cells bound N.
+- **Know your hidden limits.** OS limits on threads, file descriptors and connections are easy to forget until you hit them; alarm on headroom.
+- **Map your dependency chain.** A service many layers down can take out services that never mention it.
+- **Restart speed is part of availability.** A fleet that can only be brought back a few hundred servers an hour turns a minute's trigger into a day's outage.
+</Callout>

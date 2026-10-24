@@ -4,6 +4,7 @@ import { Home } from './pages/Home'
 import { PrinciplesIndex } from './pages/PrinciplesIndex'
 import { CollectionIndex } from './pages/CollectionIndex'
 import { EntryPage } from './pages/EntryPage'
+import { Reading } from './pages/Reading'
 import { NotFound } from './pages/NotFound'
 
 // Hash URLs (/#/principles/...) because GitHub Pages can't route deep links in
@@ -20,6 +21,7 @@ export function App() {
           <Route path="postmortems/:slug" element={<EntryPage collection="postmortems" />} />
           <Route path="case-studies" element={<CollectionIndex collection="case-studies" />} />
           <Route path="case-studies/:slug" element={<EntryPage collection="case-studies" />} />
+          <Route path="reading" element={<Reading />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

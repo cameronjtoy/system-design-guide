@@ -1,0 +1,46 @@
+---
+title: A blank field crashes Google Cloud's API gateway worldwide
+summary: New code in Google's Service Control, shipped without a feature flag or error handling, crashed when a policy with blank fields replicated to every region within seconds. Restarts then overloaded a database because they didn't back off.
+company: Google Cloud
+date: 2025-06-12
+duration: About 7 hours, longest in us-central1
+impact: Many Google Cloud, Workspace and Security Operations APIs returned 503 errors globally, and services built on Google Cloud, including Spotify, Discord and Snapchat, reported widespread failures.
+principles: [progressive-delivery, timeouts-retries-and-backoff, graceful-degradation, static-stability]
+tags: [feature-flags, null-pointer, global-replication, herd-effect, control-plane]
+sources:
+  - title: Google Cloud Service Health incident report (June 12, 2025)
+    url: https://status.cloud.google.com/incidents/ow5i3PPK96RduMcb1SsW
+---
+
+## What happened
+
+**Service Control** sits in the path of Google Cloud API requests and checks authorization, policy and quotas. It reads its policy data from regional Spanner tables, and that data is replicated globally so every region has it within seconds.
+
+On May 29, 2025, a new feature for additional quota-policy checks was added to Service Control. It was rolled out region by region, as usual, but the new code path only ran when a specific kind of policy was present, so **the rollout never exercised it**. The code also lacked proper error handling and **was not behind a feature flag**.
+
+On June 12 at about 10:45 AM PDT, a policy change was inserted into the Spanner tables with **unintended blank fields**. It replicated to every region within seconds. When Service Control read it, the new code hit a **null pointer**, and the binary crashed, then crashed again on restart, in a loop, in every region.
+
+## Response and the herd effect
+
+- Google's SRE team began triaging within minutes and identified the root cause within about 10 minutes.
+- They had a "red button" to disable the faulty code path, and it was rolled out within about 40 minutes. Most regions recovered soon after.
+- In larger regions such as **us-central1**, as thousands of Service Control tasks restarted at once, they all hit the Spanner database at the same moment. Service Control **didn't use randomized exponential backoff**, so this herd effect overloaded the infrastructure it depended on, and full recovery in us-central1 took up to about 2 hours 40 minutes while engineers throttled task creation and routed traffic to other regions.
+
+Status updates were also slow: the Cloud Service Health page itself ran on the affected infrastructure, and the first public update came about an hour after the incident began.
+
+## What changed
+
+- Modularized Service Control's architecture so features are isolated and **fail open** instead of crashing the whole binary.
+- Required that changes to critical binaries be **protected by feature flags**, off by default, and enabled progressively.
+- Changed global data replication to propagate changes incrementally and validate them, instead of reaching every region within seconds.
+- Added **randomized exponential backoff** where it was missing.
+- Improved static analysis and testing for error handling, and made status communication independent of the impacted infrastructure.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **A staged rollout only protects the code paths it exercises.** If new logic is dormant during rollout, the rollout proves nothing. Feature flags let you enable the behaviour itself gradually.
+- **Data is a deployment too.** Globally replicated config or policy data should roll out progressively and be validated, like code.
+- **Fail open for non-critical checks.** A quota check crashing should not take down every API.
+- **Restarts need backoff with jitter.** Thousands of instances restarting in lockstep can take out the database they all depend on.
+</Callout>

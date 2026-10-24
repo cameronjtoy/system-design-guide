@@ -147,7 +147,7 @@ function EntryHeader({ entry }: { entry: Entry }) {
             <dd>{formatDate(entry.date)}</dd>
           </div>
           {entry.duration && (
-            <div>
+            <div className={styles.factDuration}>
               <dt>Duration</dt>
               <dd>{entry.duration}</dd>
             </div>

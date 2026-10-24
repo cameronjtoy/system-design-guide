@@ -1,0 +1,48 @@
+---
+title: Atlassian deletes 883 customer sites by mistake
+summary: A maintenance script meant to remove a retired app was given site IDs instead of app IDs, and permanently deleted entire Jira and Confluence sites for 775 customers. Restoring them took up to two weeks.
+company: Atlassian
+date: 2022-04-05
+duration: Up to 14 days for some customers
+impact: 775 customers lost access to their Jira, Confluence and other cloud products; the last sites were restored on April 18. No customer lost more than five minutes of data.
+principles: [backups-and-disaster-recovery, progressive-delivery, api-design-and-versioning]
+tags: [deletion, scripts, soft-delete, restore, multi-tenant]
+sources:
+  - title: Post-Incident Review on the Atlassian April 2022 outage
+    url: https://www.atlassian.com/engineering/post-incident-review-april-2022-outage
+---
+
+## What happened
+
+Atlassian was retiring a legacy standalone app, "Insight – Asset Management", whose functionality had moved into Jira Service Management. The plan was to delete the old app from the customer sites where it was still installed.
+
+The team responsible for the deletion received a list of IDs to remove. But the list contained the IDs of the **customers' entire cloud sites**, not the IDs of the app installations. The deletion script used an API that accepted either kind of ID, and it ran in a mode that **permanently deleted** data rather than marking it for deletion.
+
+Between 07:38 and 08:01 UTC on April 5, the script deleted **883 sites belonging to 775 customers**.
+
+## Why restoration took up to two weeks
+
+Atlassian had backups and could restore any single site within its recovery objectives. What it didn't have was an **automated process to restore hundreds of sites at once**, each with several products, linked data and third-party apps, back into a multi-tenant environment where other customers' data now occupied the space.
+
+- Early restorations were largely manual and took days per batch.
+- Midway through, the team built a new, more automated restoration approach, which sped up the later batches.
+- Communication suffered: deleted sites also removed the contact information Atlassian needed to reach affected administrators, and customers felt updates were slow.
+
+All sites were restored by April 18, with at most five minutes of data loss because backups and point-in-time recovery worked as designed.
+
+## What changed
+
+- **Soft deletes everywhere:** deletion now marks data for removal and keeps it recoverable for a period, rather than deleting immediately. Permanent deletion requires a separate, gated step.
+- **Safer APIs:** destructive APIs no longer accept ambiguous IDs, and scripts must validate what an ID refers to before acting.
+- **Staged execution for bulk operations:** run on a small batch first and verify before continuing.
+- **Automated, tested multi-site restoration** so large-scale restores can happen in hours.
+- Improved incident communication, including keeping customer contacts available outside the affected systems.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Make deletion reversible by default.** Soft delete with a retention period turns a catastrophe into an undo.
+- **Ambiguous IDs are a trap.** An API that accepts "a site or an app" by the same kind of ID invites exactly this mistake. Use typed IDs and validate them.
+- **Treat bulk scripts like deploys.** Canary them on a few targets, check the result, then proceed.
+- **Test restoring at scale, not just restoring one thing.** The backups were fine; the process to use them for hundreds of customers at once didn't exist.
+</Callout>

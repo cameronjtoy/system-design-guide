@@ -100,6 +100,16 @@ export function Home() {
           </CardGrid>
         </section>
       )}
+
+      <section className={styles.section}>
+        <div className={styles.sectionHead}>
+          <h2>Go deeper</h2>
+        </div>
+        <p className={styles.deeper}>
+          The <Link to="/reading">reading list</Link> collects the engineering blogs, incident report archives, papers,
+          books and UI design systems behind this guide.
+        </p>
+      </section>
     </div>
   )
 }

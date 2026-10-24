@@ -1,0 +1,46 @@
+---
+title: Slack's first-day-back outage
+summary: When everyone returned from the holidays, a cloud network component couldn't scale fast enough. Packet loss confused Slack's autoscaling, which removed servers instead of adding them, and dashboards failed alongside everything else.
+company: Slack
+date: 2021-01-04
+duration: Several hours of degraded service
+impact: Users around the world couldn't load Slack or send messages reliably on the first working day of 2021.
+principles: [autoscaling, observability, static-stability, backpressure-and-load-shedding]
+tags: [aws, transit-gateway, autoscaling, packet-loss, holidays]
+sources:
+  - title: Slack's Outage on January 4th 2021
+    url: https://slack.engineering/slacks-outage-on-january-4th-2021/
+---
+
+## What happened
+
+Slack's traffic follows the working week, and the holiday period is unusually quiet. On Monday, January 4, as people in the Americas started work, traffic climbed steeply. Error rates crept up, and an external monitoring service paged Slack's on-call engineers. Slack's own dashboards and alerting then started failing, which made the problem harder to see.
+
+## Root cause
+
+Slack's traffic between parts of its network passed through **AWS Transit Gateways**, which are managed by AWS and meant to scale automatically. After the quiet holidays, they did not scale fast enough for the sudden morning surge, and started **dropping packets**.
+
+That packet loss set off a chain reaction inside Slack:
+
+1. Backend servers spent their time waiting on slow, lossy network calls, so their **CPU usage looked low**.
+2. Slack's **autoscaling** saw low CPU and **scaled the web tier down**, just as it needed more capacity.
+3. When the system then needed to scale up quickly, the service that provisions new instances ran into its own limits, so new capacity was slow to arrive and some new instances failed to become healthy.
+4. Load balancers, seeing many unhealthy backends, went into a "panic mode" and spread traffic across all instances, healthy or not.
+5. The monitoring and dashboards relied on the same degraded network, so engineers had poor visibility.
+
+Slack escalated to AWS, which manually increased Transit Gateway capacity. Slack's services then recovered.
+
+## What changed
+
+- AWS reviewed how Transit Gateways scale for sudden, large jumps in packet rate, and Slack arranged for its gateways to be pre-scaled ahead of predictable peaks.
+- Slack raised the limits that had slowed its provisioning service, so large scale-ups can complete quickly.
+- Slack reviewed how its autoscaling and load balancers behave when the network, not the servers, is the bottleneck.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Low CPU doesn't always mean low load.** Servers stalled on I/O look idle. Scale on a signal tied to demand (requests, latency, queue depth), and be cautious about scaling *down* during anomalies.
+- **Know your seasonality.** The first workday after a holiday is a predictable spike; pre-warm capacity, including managed components you don't control.
+- **Your scale-up path is critical infrastructure.** If provisioning can't handle a burst, autoscaling can't save you.
+- **Monitor from outside.** An external monitor raised the first alarm while internal dashboards were failing.
+</Callout>

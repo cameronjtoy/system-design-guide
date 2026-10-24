@@ -106,6 +106,13 @@
   grid-column: 1 / -1;
 }
 
+/* Durations are often long sentences; give them their own row on phones. */
+@media (max-width: 639px) {
+  .factDuration {
+    grid-column: 1 / -1;
+  }
+}
+
 .footerSection h2 {
   margin-bottom: 16px;
 }

@@ -1,0 +1,50 @@
+---
+title: Reddit's Pi Day Kubernetes upgrade outage
+summary: A Kubernetes upgrade removed a deprecated node label that Reddit's networking configuration still relied on. Pod networking broke across the cluster, rollback wasn't possible, and Reddit was down for over five hours.
+company: Reddit
+date: 2023-03-14
+duration: 314 minutes
+impact: Reddit's site and apps were unavailable for most users for over five hours on the afternoon of March 14 (US time).
+principles: [progressive-delivery, backups-and-disaster-recovery, observability]
+tags: [kubernetes, upgrade, calico, labels, rollback]
+sources:
+  - title: "You Broke Reddit: The Pi-Day Outage (r/RedditEng)"
+    url: https://www.reddit.com/r/RedditEng/comments/11xx5o0/you_broke_reddit_the_piday_outage/
+---
+
+## What happened
+
+Reddit was upgrading one of its oldest and largest Kubernetes clusters from version 1.23 to 1.24. It had upgraded other clusters the same way without trouble. Shortly after the upgrade started, traffic to Reddit dropped sharply and the site went down.
+
+## Root cause
+
+Reddit's cluster used **Calico** for pod networking, configured with **route reflectors**, special nodes that share routing information so every node knows how to reach every pod.
+
+The route reflectors were chosen by a selector that matched the Kubernetes node label `node-role.kubernetes.io/master`. Kubernetes had been moving from "master" to "control-plane" terminology for several releases, and **version 1.24 removed the old label**, even from existing nodes.
+
+After the upgrade, the selector matched **no nodes at all**. With no route reflectors, routes weren't distributed, and pods across the cluster couldn't reach each other.
+
+This configuration was old, set up by people who had since moved on, and wasn't part of what the team checked during upgrades, which is why upgrading other, newer clusters had gone fine.
+
+## Why it took over five hours
+
+- **Diagnosis was slow.** The symptoms (widespread network failures) had many possible causes, and the link to a renamed label wasn't obvious.
+- **Rolling back was hard.** Kubernetes doesn't support downgrading a control plane in place. The team decided to **restore the cluster's control plane from a backup** taken before the upgrade, a procedure they had documented but which needed adjustments under pressure.
+- **Bringing traffic back needed care.** Once the cluster was working, traffic had to be ramped up gradually so caches and services weren't overwhelmed.
+
+## Follow-ups
+
+Reddit's write-up points to several areas of work:
+
+- Finding configuration in older clusters that depends on deprecated labels and APIs before upgrading.
+- Making the oldest, most customized clusters look like the standard ones, so upgrades tested elsewhere apply to them.
+- Improving and rehearsing the procedure for restoring a cluster's control plane from backup.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Deprecations are deadlines.** A warning ignored for several releases becomes a breaking change in one.
+- **Snowflake infrastructure breaks differently.** The cluster that differed from the others was the one that failed; standardize or test the outliers specifically.
+- **Know whether you can roll back before you start.** If an upgrade is one-way, rehearse the restore and have it ready.
+- **Write the postmortem for everyone.** Reddit's detailed, blameless write-up is a good model of explaining an outage honestly.
+</Callout>

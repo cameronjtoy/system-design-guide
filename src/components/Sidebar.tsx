@@ -83,6 +83,9 @@ export function Sidebar() {
             <span className={styles.count}>{counts[c.id]}</span>
           </NavLink>
         ))}
+        <NavLink to="/reading" className={linkClass}>
+          Reading list
+        </NavLink>
       </div>
     </nav>
   )

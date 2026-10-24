@@ -1,0 +1,47 @@
+---
+title: GitHub's 43-second partition and 24 hours of degradation
+summary: A brief loss of connectivity between GitHub's US East Coast and West Coast sites caused automated failover to promote databases on the other coast. When the link came back, writes had landed on both sides, and untangling them took a day.
+company: GitHub
+date: 2018-10-21
+duration: 24 hours 11 minutes
+impact: GitHub.com showed out-of-date and inconsistent data, webhooks and Pages builds were delayed, and some writes were held back for hours while data consistency was restored.
+principles: [replication, leader-election, split-brain-and-fencing, consistency-models, backups-and-disaster-recovery]
+tags: [mysql, orchestrator, failover, network-partition, cross-region]
+sources:
+  - title: October 21 post-incident analysis (GitHub)
+    url: https://github.blog/news-insights/company-news/oct21-post-incident-analysis/
+  - title: MySQL High Availability at GitHub
+    url: https://github.blog/engineering/infrastructure/mysql-high-availability-at-github/
+---
+
+## What happened
+
+During routine maintenance to replace failing optical equipment, connectivity between GitHub's US East Coast network hub and its primary US East Coast data center was lost for **43 seconds**.
+
+GitHub's MySQL clusters use **orchestrator**, which runs as a Raft cluster across GitHub's sites, to detect failed primaries and promote replicas. During those 43 seconds, the orchestrator nodes that could still talk to each other (on the West Coast and in the public cloud) concluded that the East Coast primaries were gone, and **promoted West Coast replicas to primary** for several clusters.
+
+## Why 43 seconds became 24 hours
+
+When connectivity returned, the application tier began sending writes to the new West Coast primaries. But:
+
+- **The old East Coast primaries had accepted a few seconds of writes** that had not been replicated west before the partition. Those writes now existed only on the East Coast.
+- **The West Coast primaries had accepted new writes** after promotion.
+- GitHub's application tier was not designed for the extra cross-country latency of every request now reaching a primary on the other coast, so performance degraded badly.
+
+The two sides had diverged. Failing back to the East Coast would lose the West Coast writes; staying West would lose the East Coast writes. GitHub chose to **protect data integrity over speed**: it paused some features, restored the East Coast databases from backups, replicated the West Coast writes onto them, and then reconciled the orphaned East Coast writes. Restoring multi-terabyte backups took many hours, and the queue of delayed webhooks and builds took longer to drain.
+
+## What changed
+
+- **Orchestrator was reconfigured to stop promoting primaries across regional boundaries**, since the application tier couldn't run with a primary on the other coast.
+- Accelerated work toward an **active/active** design so GitHub can tolerate the loss of a whole data center.
+- Improved status reporting, so the status page reflects which features are affected.
+- Invested in faster backup restores and better data reconciliation tooling.
+
+## Lessons
+
+<Callout type="tip" title="Key takeaways">
+- **Automated failover must match what the application can handle.** Orchestrator did exactly what it was configured to do; the topology it produced was one the rest of the system couldn't run on.
+- **Asynchronous replication plus failover means possible lost or divergent writes.** Decide in advance how you'll reconcile them.
+- **Short partitions are the dangerous ones.** A 43-second blip is long enough to trigger failover and short enough that the old primary comes back still accepting writes. Fencing the old primary matters as much as promoting the new one.
+- **Data integrity first.** GitHub accepted a long degradation to avoid losing user data, which is usually the right call.
+</Callout>
