@@ -10,7 +10,7 @@ const CALLOUT_TITLES: Record<CalloutKind, string> = {
   tip: 'Tip',
   example: 'Real-world example',
   warning: 'Watch out',
-  interview: 'Interview angle',
+  interview: 'What to say',
   note: 'Note',
 }
 

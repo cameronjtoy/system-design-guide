@@ -1,0 +1,70 @@
+---
+title: Failure detection and health checks
+summary: A distributed system can't tell a crashed node from a slow one or a broken network. Heartbeats, timeouts, gossip and layered health checks decide when to declare a node dead, a trade-off between fast detection and false alarms.
+difficulty: intermediate
+order: 8
+tags: [heartbeats, health-checks, gossip, swim, phi-accrual, timeouts]
+companies: [Amazon, HashiCorp, Apache Cassandra]
+related: [leader-election, service-discovery, load-balancing, split-brain-and-fencing, timeouts-retries-and-backoff]
+sources:
+  - title: Implementing health checks (Amazon Builders' Library)
+    url: https://aws.amazon.com/builders-library/implementing-health-checks/
+  - title: "SWIM: Scalable Weakly-consistent Infection-style Process Group Membership Protocol"
+    url: https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf
+---
+
+## The problem it solves
+
+When a node stops responding, others need to stop sending it traffic, move its work and maybe elect a replacement. But silence is ambiguous: the node may have crashed, be paused for garbage collection, be overloaded, or the network between you may be broken while the node is fine.
+
+Declare too eagerly and you trigger needless failovers (and possibly two leaders); declare too slowly and users wait on a dead node.
+
+## How it works
+
+### Heartbeats and timeouts
+
+Each node periodically sends "I'm alive" messages, or is probed. If nothing arrives within a timeout, it's suspected dead. Timeouts should be several heartbeat intervals long, to tolerate a lost packet or two.
+
+### Adaptive detectors
+
+The **phi accrual** failure detector (used by Cassandra and Akka) doesn't give a yes/no answer. It tracks the history of heartbeat arrival times and outputs a suspicion level that rises the longer a heartbeat is overdue relative to normal. Each component chooses its own threshold.
+
+### Gossip-based membership (SWIM)
+
+In large clusters, all-to-all heartbeats don't scale. **SWIM**-style protocols, used by HashiCorp's memberlist library behind Consul and Serf, work like this:
+
+- Each node periodically pings one random peer.
+- If it gets no answer, it asks a few other nodes to ping that peer indirectly, which rules out a problem with just its own network path.
+- Still no answer: the peer is marked **suspect**, and the suspicion spreads by gossip. If the peer doesn't refute it in time, it's declared dead.
+
+### Health checks behind load balancers
+
+| Check | What it tests | Risk |
+|---|---|---|
+| **Liveness** | Process is running and responsive | Too shallow to catch broken dependencies |
+| **Local health** | Disk, memory, worker threads, config loaded | Misses downstream problems |
+| **Dependency (deep) health** | Database and downstream services reachable | One shared dependency failing marks every server unhealthy at once |
+
+## Trade-offs
+
+- **Speed vs accuracy:** short timeouts mean fast failover and more false positives. Set them based on measured pause and latency behaviour.
+- **Deep checks can cause outages:** if every server checks the same database and it blips, the load balancer removes all servers. Amazon's guidance is to combine local checks for routing with care around dependency checks, and to **fail open**: if every server looks unhealthy, keep sending traffic anyway.
+- **Gray failures:** a node that answers health checks but serves errors or is very slow. Watch real request success rates (passive checks), not just probes.
+- **Detection is only half of it:** the system also has to stop the "dead" node from acting, which is what [fencing](/principles/split-brain-and-fencing) is for.
+
+## In the real world
+
+<Callout type="example" title="Amazon's health check lessons">
+The Amazon Builders' Library article on health checks explains how deep health checks that include a shared dependency can take an entire fleet out of service at once: when the dependency has a problem, every server reports unhealthy together. Amazon's guidance includes failing open when too many servers look unhealthy, and limiting how fast automation can remove capacity based on health signals.
+</Callout>
+
+The same lesson appears in AWS's 2025 us-east-1 outage, where health checks flapping on newly launched instances caused Network Load Balancers to remove and re-add capacity repeatedly. AWS responded by adding limits on how much capacity health checks can remove at once. See [The DynamoDB DNS race condition](/postmortems/aws-dynamodb-dns-2025).
+
+## Interview angle
+
+<Callout type="interview">
+When you say "the load balancer health-checks the servers", specify what the check tests and what happens if every check fails. For clusters, mention heartbeats with timeouts tuned to avoid false failovers, or gossip for large memberships.
+</Callout>
+
+- Health checks that only verify the process is up.
+- Deep checks with no fail-open behaviour.

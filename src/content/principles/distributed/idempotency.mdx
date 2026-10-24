@@ -1,0 +1,77 @@
+---
+title: Idempotency
+summary: An idempotent operation has the same effect whether it runs once or many times. Since networks force retries and queues redeliver messages, idempotency is what makes those duplicates harmless.
+difficulty: intermediate
+order: 3
+tags: [idempotency, idempotency-keys, retries, deduplication, at-least-once]
+companies: [Stripe, Amazon]
+related: [timeouts-retries-and-backoff, exactly-once-delivery, transactional-outbox, distributed-transactions-and-sagas, api-design-and-versioning]
+sources:
+  - title: Making retries safe with idempotent APIs (Amazon Builders' Library)
+    url: https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/
+  - title: Designing robust and predictable APIs with idempotency (Stripe)
+    url: https://stripe.com/blog/idempotency
+---
+
+## The problem it solves
+
+In a distributed system you often can't tell whether a request succeeded. The request might have been lost, or the work done and the response lost. The safe reaction is to retry, and message queues do the same thing internally, delivering each message **at least once**.
+
+Retries and redeliveries mean every operation may run more than once. If running twice charges a card twice, sends two emails or adds an item to the cart twice, retries become dangerous, and you end up choosing between duplicates and lost work.
+
+## How it works
+
+### Naturally idempotent operations
+
+- `SET balance = 100` is idempotent; `balance = balance + 10` is not.
+- `PUT /users/42 {name: "Ada"}` and `DELETE /users/42` are idempotent by HTTP semantics; `POST /orders` usually isn't.
+- "Mark order 7 as shipped" is idempotent; "ship the next order" isn't.
+
+Prefer designs that express **the desired end state** rather than an increment.
+
+### Idempotency keys
+
+For operations that create things or have side effects, the client attaches a unique key per logical operation:
+
+1. The server checks whether it has seen the key.
+2. If not, it does the work and **stores the key with the result, in the same transaction** as the side effect.
+3. If it has, it returns the stored result without redoing the work.
+4. Keys expire after a retention window (Stripe keeps them for 24 hours).
+
+```python
+def create_payment(key, request):
+    with db.transaction():
+        existing = db.idempotency.get(key)
+        if existing:
+            return existing.response             # retry: replay result
+        payment = charge(request)                # side effect
+        db.idempotency.insert(key, payment)      # same transaction
+        return payment
+```
+
+### Deduplicating messages
+
+Consumers of a queue can record processed message IDs (or an event's natural key, like `order_id + event_type`) in the same transaction as the work, and skip any message already recorded. A **unique constraint** in the database is often the simplest dedup mechanism.
+
+## Trade-offs
+
+- **Storage and lookups.** Every request now reads and writes a key table; keys need expiry.
+- **Concurrency.** Two retries arriving at the same time must not both proceed. Use a unique constraint or lock on the key, and return "in progress" to the second.
+- **Same key, different body.** If a client reuses a key with different parameters, reject it; otherwise you'd silently return a result for a different request.
+- **External side effects** (email, payment networks) aren't covered by your database transaction. Pass your idempotency key to the downstream provider if it supports one, or record the side effect's progress in phases.
+
+## In the real world
+
+<Callout type="example" title="Stripe and AWS">
+Stripe accepts an `Idempotency-Key` header on all POST requests and returns the saved response for repeated keys, which is what lets its client libraries retry automatically with backoff. See [How Stripe makes payment APIs safe to retry](/case-studies/stripe-idempotency-keys). Many AWS APIs that create resources, like launching EC2 instances, accept a **client token** for the same reason; the Builders' Library describes how AWS treats a repeated token as a request for the original result.
+</Callout>
+
+## Interview angle
+
+<Callout type="interview">
+Any time you add retries or a queue, add "and the operation is idempotent because…". For payments and orders, describe idempotency keys stored in the same transaction as the write; for queue consumers, describe dedup by message ID with a unique constraint.
+</Callout>
+
+- Retrying non-idempotent POSTs.
+- Storing the idempotency key in a separate transaction from the side effect.
+- Assuming a queue delivers exactly once.

@@ -1,0 +1,79 @@
+---
+title: API design and versioning
+summary: A public API is a promise that's hard to take back. Consistent resource design, clear errors and an explicit versioning strategy let an API evolve without breaking the clients that depend on it.
+difficulty: beginner
+order: 2
+tags: [rest, grpc, graphql, versioning, backward-compatibility, api-design]
+companies: [Stripe, Google]
+related: [pagination, idempotency, rate-limiting, api-gateways, authentication-and-authorization]
+sources:
+  - title: Google API Improvement Proposals (AIP)
+    url: https://google.aip.dev/
+  - title: "APIs as infrastructure: future-proofing Stripe with versioning"
+    url: https://stripe.com/blog/api-versioning
+---
+
+## The problem it solves
+
+Once other teams, partners or mobile apps call your API, you can't change it freely. An old app version installed on millions of phones may call your API for years. Renaming a field, changing a type or tightening validation can break clients you've never heard of. Badly designed APIs also leak internal details, making them harder to change later.
+
+## How it works
+
+### Choose a style
+
+| Style | Strengths | Typical use |
+|---|---|---|
+| **REST over HTTP + JSON** | Universal, cacheable, easy to debug | Public APIs |
+| **gRPC (Protocol Buffers over HTTP/2)** | Fast, strongly typed, streaming, code generation | Service-to-service |
+| **GraphQL** | Clients ask for exactly the fields they need | Complex UIs aggregating many resources |
+
+### Design principles
+
+- **Model resources, not actions:** `POST /orders`, `GET /orders/42`, `POST /orders/42:cancel` for operations that don't fit CRUD.
+- **Consistent naming, casing and error format** across every endpoint.
+- **Meaningful status codes:** 400 for bad input, 401 unauthenticated, 403 forbidden, 404 not found, 409 conflict, 429 rate limited, 5xx server errors. Include a machine-readable error code and a human message.
+- **Idempotent mutations** where possible, with idempotency keys for creates. See [idempotency](/principles/idempotency).
+- **Paginate every list** from day one. See [pagination](/principles/pagination).
+- Don't expose database IDs or internal structure that you might want to change.
+
+### Compatible vs breaking changes
+
+| Usually safe | Breaking |
+|---|---|
+| Adding an optional field or parameter | Removing or renaming a field |
+| Adding a new endpoint | Changing a field's type or meaning |
+| Adding a new enum value (if clients handle unknowns) | Making an optional parameter required |
+| Relaxing validation | Tightening validation |
+
+Clients should **ignore unknown fields**; servers shouldn't require them.
+
+### Versioning strategies
+
+- **URL version:** `/v1/orders`, `/v2/orders`. Simple and visible; each major version is a lot of work to maintain.
+- **Header version:** clients send the version they were built against.
+- **Date-based versions with transforms:** pin each client to the API version it started with, and translate responses for older versions.
+- **Deprecation policy:** announce, measure usage, give long notice, then remove.
+
+## Trade-offs
+
+- **Every version you keep is code you maintain.** Prefer additive changes so new versions are rare.
+- **Too little structure early** makes later consistency painful; too much ceremony slows teams. Adopting a published style guide helps.
+- **Strong typing (gRPC, schemas) catches mistakes** but needs tooling and generated clients.
+
+## In the real world
+
+<Callout type="example" title="Stripe: every account pinned to a version">
+Stripe pins each account to the API version that was current when it first made a request. When Stripe makes a breaking change, it releases a new dated version and writes a small transformation module that converts responses back to the older shape. Requests from older accounts pass through these transforms in reverse order, so the core code only implements the latest version while old integrations keep working for years.
+</Callout>
+
+Google publishes its API design guidance as **API Improvement Proposals (AIPs)**: standard methods, naming, errors, pagination and long-running operations, applied across Google Cloud APIs so that learning one API teaches you the rest.
+
+## Interview angle
+
+<Callout type="interview">
+When you define your API in an interview, show a couple of endpoints with request and response shapes, mention pagination, idempotency keys for creates, consistent errors, and how you'd evolve it without breaking clients (additive changes, versioning).
+</Callout>
+
+- Verbs in every URL (`/getOrder`, `/createOrder`).
+- Returning unbounded lists.
+- Breaking changes without a version or deprecation period.
