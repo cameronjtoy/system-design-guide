@@ -84,6 +84,19 @@ export const ExternalIcon = (p: IconProps) => (
   </Icon>
 )
 
+export const CheckIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </Icon>
+)
+
+export const CheckCircleIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 12.5l2.8 2.8L16.5 9.5" />
+  </Icon>
+)
+
 export const LogoMark = (p: IconProps) => (
   <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true" focusable="false" {...p}>
     <rect width="32" height="32" rx="6" fill="var(--text)" />

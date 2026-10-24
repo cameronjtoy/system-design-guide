@@ -38,3 +38,49 @@
 .note .calloutTitle {
   color: var(--text-muted);
 }
+
+.reveal {
+  margin: 1em 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.revealSummary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.revealSummary::-webkit-details-marker {
+  display: none;
+}
+
+.revealSummary::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 1.8px solid var(--accent-text);
+  border-bottom: 1.8px solid var(--accent-text);
+  transform: rotate(-45deg);
+  transition: transform 150ms ease;
+}
+
+.reveal[open] > .revealSummary::before {
+  transform: rotate(45deg);
+}
+
+.revealBody {
+  padding: 0 16px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.revealBody > :first-child {
+  margin-top: 14px;
+}
