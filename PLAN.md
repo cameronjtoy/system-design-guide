@@ -46,12 +46,13 @@ Every postmortem: **What happened → Root cause → What changed → Lessons**,
 | 4. Advanced | `phase-4-advanced-principles` | Distributed systems, Messaging, Reliability, Security (30 principles) |
 | 5. AI infra | `phase-5-ai-infra` | 13 AI infrastructure principles and AI case studies |
 | 6. Learning tools | `phase-6-learning-tools` | Progress tracking, learning paths, practice problems, strict link checking |
+| 7. More practice | `phase-7-more-practice` | 10 more practice problems (16 total) and a practice ladder path |
 
 Each phase branches from the previous one, and its PR targets the previous phase's branch. Merge them in order, starting with phase 1 into `main`.
 
 ## Status
 
-All six phases are implemented: 74 principles, 20 postmortems, 19 case studies, 6 practice problems, 5 learning paths, progress tracking and a reading list. Possible next steps: an installable PWA with offline reading, more practice problems, and periodic link checks of cited sources.
+Phases 1–7 are implemented: 74 principles, 20 postmortems, 19 case studies, 16 practice problems, 6 learning paths, progress tracking and a reading list. Possible next steps: an installable PWA with offline reading, quizzes, and periodic link checks of cited sources.
 
 ## Content rules
 
