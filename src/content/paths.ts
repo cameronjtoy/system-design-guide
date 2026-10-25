@@ -194,7 +194,40 @@ export const PATHS: LearningPath[] = [
       },
       {
         title: 'Put it together',
-        steps: ['practice/design-llm-serving-platform', 'practice/design-rag-assistant', 'case-studies/uber-michelangelo'],
+        steps: ['practice/design-llm-serving-platform', 'practice/design-rag-assistant', 'practice/design-ai-agent-platform', 'case-studies/uber-michelangelo'],
+      },
+    ],
+  },
+  {
+    slug: 'practice-ladder',
+    title: 'Practice ladder',
+    summary: 'All the practice problems, easiest first, each paired with the principle it leans on most so you can review before you attempt it.',
+    audience: 'Anyone who has read the fundamentals and wants reps',
+    duration: 'About 3 weeks, one problem every day or two',
+    sections: [
+      {
+        title: 'Warm-ups',
+        steps: ['principles/back-of-the-envelope-estimation', 'practice/design-url-shortener', 'practice/design-rate-limiter'],
+      },
+      {
+        title: 'Read-heavy systems',
+        steps: ['principles/multi-tier-caching', 'practice/design-typeahead', 'practice/design-news-feed', 'practice/design-video-streaming'],
+      },
+      {
+        title: 'Async pipelines',
+        steps: ['principles/message-queues-vs-logs', 'practice/design-notification-system', 'practice/design-web-crawler', 'practice/design-job-scheduler'],
+      },
+      {
+        title: 'Correctness under contention',
+        steps: ['principles/idempotency', 'practice/design-ticket-booking', 'practice/design-payment-system'],
+      },
+      {
+        title: 'Real-time systems',
+        steps: ['principles/pub-sub', 'practice/design-chat-app', 'practice/design-ride-matching', 'practice/design-collaborative-editor'],
+      },
+      {
+        title: 'AI systems',
+        steps: ['principles/agent-systems', 'practice/design-llm-serving-platform', 'practice/design-rag-assistant', 'practice/design-ai-agent-platform'],
       },
     ],
   },
