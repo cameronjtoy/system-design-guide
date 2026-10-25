@@ -47,12 +47,13 @@ Every postmortem: **What happened → Root cause → What changed → Lessons**,
 | 5. AI infra | `phase-5-ai-infra` | 13 AI infrastructure principles and AI case studies |
 | 6. Learning tools | `phase-6-learning-tools` | Progress tracking, learning paths, practice problems, strict link checking |
 | 7. More practice | `phase-7-more-practice` | 10 more practice problems (16 total) and a practice ladder path |
+| 8. Product & data | `phase-8-product-and-data` | Product Engineering (9) and Data Design & Hygiene (11) principles, two learning paths, reading list group |
 
 Each phase branches from the previous one, and its PR targets the previous phase's branch. Merge them in order, starting with phase 1 into `main`.
 
 ## Status
 
-Phases 1–7 are implemented: 74 principles, 20 postmortems, 19 case studies, 16 practice problems, 6 learning paths, progress tracking and a reading list. Possible next steps: an installable PWA with offline reading, quizzes, and periodic link checks of cited sources.
+Phases 1–8 are implemented: 94 principles across 11 topics, 20 postmortems, 19 case studies, 16 practice problems, 8 learning paths, progress tracking and a reading list. Possible next steps: an installable PWA with offline reading, quizzes, and periodic link checks of cited sources.
 
 ## Content rules
 

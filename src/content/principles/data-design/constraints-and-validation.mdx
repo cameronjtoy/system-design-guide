@@ -1,0 +1,81 @@
+---
+title: Constraints and validation
+summary: Decide what must always be true about your data and make the database enforce it. Application checks catch mistakes early with friendly messages; database constraints catch everything else, including bugs, scripts and race conditions.
+difficulty: beginner
+order: 4
+tags: [constraints, validation, data-integrity, foreign-keys, unique-index, schema]
+companies: []
+related: [designing-data-for-applications, transactions-and-isolation-levels, data-types-time-and-money, data-contracts-and-quality, idempotency]
+sources:
+  - title: Constraints (PostgreSQL documentation)
+    url: https://www.postgresql.org/docs/current/ddl-constraints.html
+  - title: Parse, don't validate (Alexis King)
+    url: https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/
+---
+
+## The problem it solves
+
+"Every order has a customer." "An email is registered at most once." "Quantity is positive." If those rules live only in application code, they'll eventually be broken by a second service, a backfill script, a race between two requests, or a bug. Bad data spreads: into caches, analytics, emails and other systems, and cleaning it up costs far more than preventing it.
+
+## How it works
+
+### Layers of validation
+
+| Layer | Catches | Why it's needed |
+|---|---|---|
+| Client / UI | Typos, missing fields | Instant feedback |
+| API boundary | Malformed or malicious input | Clients can't be trusted |
+| Domain logic | Business rules ("can't ship a cancelled order") | Rules that need context |
+| **Database constraints** | Everything that gets past the rest | The last line, and the only one that sees every writer |
+
+### Constraints worth using
+
+- **`NOT NULL`**: if a value is required, say so. Nullable-by-default columns are how half-created records appear.
+- **Unique constraints**: emails per tenant, external IDs, idempotency keys. This is the only reliable way to prevent duplicates under concurrency; "check, then insert" in code has a race.
+- **Foreign keys**: no orphaned rows (comments pointing at deleted posts).
+- **`CHECK` constraints**: `quantity > 0`, `status IN ('draft', 'sent', 'paid')`, `ends_at > starts_at`.
+- **Exclusion constraints** (Postgres): no two bookings for the same room overlap in time.
+
+```sql
+CREATE TABLE booking (
+  id          uuid PRIMARY KEY,
+  tenant_id   uuid NOT NULL REFERENCES tenant(id),
+  room_id     uuid NOT NULL REFERENCES room(id),
+  starts_at   timestamptz NOT NULL,
+  ends_at     timestamptz NOT NULL CHECK (ends_at > starts_at),
+  status      text NOT NULL CHECK (status IN ('held', 'confirmed', 'cancelled')),
+  UNIQUE (tenant_id, id)
+);
+```
+
+### Parse, don't validate
+
+Alexis King's essay argues for converting unstructured input into precise types **once, at the boundary**, rather than checking scattered conditions throughout the code. Once an `EmailAddress` or `PositiveQuantity` type exists, the rest of the code can't receive an invalid one. Libraries like Zod, Pydantic and JSON Schema bring the same idea to APIs.
+
+### Validate data from elsewhere too
+
+Data from partners, CSV imports, webhooks and events breaks rules just as often. Validate on ingestion, quarantine bad records rather than dropping them silently, and alert. See [data contracts and quality](/principles/data-contracts-and-quality).
+
+## Trade-offs
+
+- **Flexibility vs integrity:** constraints make some migrations harder (you must clean data before adding one). That's the point: they force you to deal with bad data.
+- **Foreign keys at scale:** across shards or services they aren't possible; enforce relationships in code and reconcile periodically.
+- **Performance:** constraint checks cost a little on writes; unique constraints need indexes. Almost always worth it.
+
+## In the real world
+
+PostgreSQL's documentation frames constraints as giving "as much control over the data in your tables as you wish", rejecting any write that would violate them. Teams that rely on application-level uniqueness checks rediscover the race condition the hard way, usually as duplicate accounts or double bookings found weeks later. The [ticket booking problem](/practice/design-ticket-booking) and [payment system](/practice/design-payment-system) both depend on database-enforced conditions to stay correct under concurrency.
+
+## Interview angle
+
+<Callout type="interview">
+When you introduce a table, mention the key constraints: "unique on (tenant_id, email), foreign key to accounts, check that amount is positive". For anything that must not happen twice, use a unique constraint or conditional update rather than check-then-insert.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+The rules in your spec ("an email can only be used once per workspace", "end date must be after start date") are constraints. Write them down explicitly; engineers can then enforce them in the database rather than hoping every code path remembers.
+</Callout>
+
+- Uniqueness checked only in application code.
+- Every column nullable.
+- Silently dropping invalid imported records.

@@ -1,0 +1,78 @@
+---
+title: From product requirements to system design
+summary: Every architecture decision traces back to a product decision. Turning "users can share documents" into numbers like latency targets, data volumes and consistency needs is the most valuable conversation a PM and an engineer can have.
+difficulty: beginner
+order: 1
+tags: [requirements, non-functional-requirements, product-management, scoping, trade-offs]
+companies: [Amazon, Google]
+related: [back-of-the-envelope-estimation, availability-and-the-nines, slis-slos-and-error-budgets, consistency-models, latency-vs-throughput]
+sources:
+  - title: Design Docs at Google (Industrial Empathy)
+    url: https://www.industrialempathy.com/posts/design-docs-at-google/
+  - title: Service Level Objectives (Google SRE book)
+    url: https://sre.google/sre-book/service-level-objectives/
+---
+
+## The problem it solves
+
+A PM writes "users can see their teammates' changes". An engineer can build that as a page refresh, a 30-second poll, or real-time sync with offline support, and those options differ in cost by 10× or more. When requirements stay vague, engineers either over-build (expensive, late) or under-build (the product feels broken). Most "the system can't do that" surprises are requirements nobody wrote down.
+
+## How it works
+
+### Functional vs non-functional requirements
+
+- **Functional:** what the product does. "Users can comment on a document."
+- **Non-functional:** how well it must do it. How fast, how many users, how fresh, how available, how secure, at what cost.
+
+Functional requirements usually come from the PM. Non-functional ones are where architecture comes from, and they are **product decisions** that engineers need PMs to make.
+
+### Turn adjectives into numbers
+
+| Vague requirement | Question to ask | Example answer | Design consequence |
+|---|---|---|---|
+| "Fast" | How fast, for which action, at what percentile? | Search results in 300 ms at p95 | Index and cache; no synchronous calls to slow services |
+| "Real-time" | How stale can it be? | Within 2 seconds | Push over WebSockets instead of polling |
+| "Always up" | What does an hour of downtime cost? | Checkout 99.95%, reports 99% | Different availability targets per feature |
+| "Scales" | How many users, how much data, how fast is it growing? | 2M users, 10× in 2 years | Plan sharding later, not now |
+| "Accurate" | What's the harm of a stale or wrong answer? | Wrong balance: severe. Stale like count: none | Strong consistency only where it matters |
+| "Secure" | Who must never see what? | Only workspace members | Authorization checks on every query |
+
+### Find the critical path
+
+Not every feature needs the same quality bar. List the user journeys that make or lose money or trust (sign-up, checkout, sending a message) and set strict targets for those. Everything else can be cheaper, slower and eventually consistent. That focus is how you keep both the budget and the design sane.
+
+### Estimate before you design
+
+Rough numbers decide the architecture. 1,000 requests/day fits on one server with a SQL database; 100,000 requests/second doesn't. Ten minutes of [back-of-the-envelope estimation](/principles/back-of-the-envelope-estimation) with the PM, using real usage forecasts, avoids both overbuilding and rewrites.
+
+### Write down what you're not doing
+
+Non-goals ("no offline mode in v1", "no more than 50 people per document") are as valuable as goals. They let engineers choose simpler designs and give everyone an agreed boundary when scope creeps.
+
+## Trade-offs
+
+- **Precision vs speed:** you can't know everything up front. Pin down the requirements that are expensive to change later (data model, consistency, tenancy) and stay loose on the cheap ones (UI details).
+- **Targets cost money:** each extra nine of availability or halving of latency costs real engineering time and infrastructure. Make the cost visible so the PM can trade it against features.
+- **Requirements change:** design for the next order of magnitude, not three.
+
+## In the real world
+
+<Callout type="example" title="Google design docs start with goals and non-goals">
+Google's design doc culture, as described by a long-time Google engineer, puts **context, goals and non-goals** at the top of every design doc, before any architecture. Non-goals are things that could reasonably be goals but are explicitly ruled out, which is often where the biggest simplifications come from.
+</Callout>
+
+Google's SRE book makes the same point for reliability: SLOs should be chosen from what users need, not from what the system currently happens to do, and setting them is a joint product and engineering decision. See [SLIs, SLOs and error budgets](/principles/slis-slos-and-error-budgets).
+
+## Interview angle
+
+<Callout type="interview">
+Spend the first minutes of any design question on requirements: functional scope, then scale, latency, availability, consistency and security, each as a number. Say which journeys are critical and which can be weaker. Interviewers treat this as product sense, and it's what makes the rest of your design defensible.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Bring numbers to the kickoff: expected users, growth, peak events (launches, holidays), and what a minute of downtime or a wrong result costs the business. Ask engineers "what would get cheaper if we relaxed this?" The answers are often surprising.
+</Callout>
+
+- Writing "fast", "scalable" and "real-time" without numbers.
+- Applying one strict target to every feature.
+- Skipping non-goals, so every edge case becomes in scope.

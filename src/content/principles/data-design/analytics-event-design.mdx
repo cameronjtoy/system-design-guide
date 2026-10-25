@@ -1,0 +1,86 @@
+---
+title: Analytics event design
+summary: Product analytics are only as good as the events behind them. Name events consistently, put context in properties, send business-critical events from the server, and treat the tracking plan as a contract.
+difficulty: beginner
+order: 9
+tags: [analytics, events, tracking-plan, naming-conventions, instrumentation, product-analytics]
+companies: [Twilio Segment]
+related: [product-metrics-and-instrumentation, data-contracts-and-quality, pii-privacy-and-retention, operational-vs-analytical-data, stream-processing]
+sources:
+  - title: Tracking plan best practices (Twilio Segment docs)
+    url: https://www.twilio.com/docs/segment/protocols/tracking-plan/best-practices
+  - title: "Measuring the User Experience on a Large Scale (Google, CHI 2010)"
+    url: https://research.google/pubs/pub36299/
+---
+
+## The problem it solves
+
+A year into a product, the analytics tool has `signup`, `Sign Up`, `user_signed_up` and `signup_v2_final`, half of them broken. Nobody trusts the funnel, every question needs an analyst to dig through raw data, and experiments can't be evaluated. Messy events are one of the most common data hygiene problems in product companies.
+
+## How it works
+
+### Name events as object + action
+
+Twilio Segment recommends an **Object + Action** convention, with the action in the past tense: `Project Created`, `Invite Sent`, `Checkout Completed`. Pick one casing and enforce it; Segment's docs suggest Title Case for event names and snake_case for property names.
+
+| Avoid | Prefer |
+|---|---|
+| `click_button_3` | `Invite Sent` with `source: "share_dialog"` |
+| `Signup Feb Promo` | `Account Created` with `campaign: "feb_promo"` |
+| `viewed_pricing_page_mobile` | `Page Viewed` with `page: "pricing"`, `platform: "ios"` |
+
+The rule behind the table: **values go in properties, not in event names.** Segment's guidance favors a small number of core events with rich properties over many narrowly named ones.
+
+### A standard envelope
+
+```json
+{
+  "event": "Checkout Completed",
+  "event_id": "evt_01J8...",
+  "occurred_at": "2026-04-11T09:12:44Z",
+  "user_id": "usr_123",
+  "anonymous_id": "anon_9d2",
+  "tenant_id": "org_77",
+  "properties": { "order_id": "ord_55", "total_minor": 4599, "currency": "EUR", "items": 3 },
+  "context": { "platform": "web", "app_version": "5.12.0", "schema_version": 2 }
+}
+```
+
+- `event_id` lets the pipeline deduplicate retries.
+- `occurred_at` is when it happened, in UTC, separate from when it was received.
+- Use IDs, not names or emails; see [PII and privacy](/principles/pii-privacy-and-retention).
+- Money follows the same rules as everywhere: integer minor units plus currency.
+
+### Client vs server events
+
+- **Server-side** for anything business-critical (sign-ups, purchases, subscription changes): reliable, not blocked by ad blockers, consistent with the database.
+- **Client-side** for UI behavior (clicks, views, time on screen).
+- Stitch them with a shared user ID, and the anonymous ID before login.
+
+### The tracking plan
+
+A tracking plan lists every event, when it fires, its properties with types, and an owner, reviewed like code. Validate events against it in the pipeline and alert on violations. See [data contracts](/principles/data-contracts-and-quality).
+
+## Trade-offs
+
+- **Granularity vs noise:** tracking everything ("autocapture") is easy but produces data nobody can interpret; tracking only planned events misses surprises. Many teams do both, but build metrics only on planned events.
+- **Consistency vs speed:** a review step slows instrumentation slightly and saves months of cleanup.
+- **Changing events:** renaming breaks dashboards; version properties and keep old names mapped during transitions.
+
+## In the real world
+
+Segment's tracking plan documentation exists because of how common this problem is among its customers: inconsistent names and event-per-variant designs make analysis unreliable, and the recommended fix is a consistent Object + Action framework enforced by schema validation. Google's HEART paper makes the complementary point: decide the goals and metrics first, then instrument what you need to compute them. See [product metrics](/principles/product-metrics-and-instrumentation).
+
+## Interview angle
+
+<Callout type="interview">
+If a design question involves analytics or metrics, describe emitting well-defined events (server-side for critical actions, with IDs and timestamps) into a log or stream, validated against a schema, landing in a warehouse, separate from the request path.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Own the tracking plan with engineering: for each feature, list the events and properties needed to answer your success questions, using the shared naming convention, before development starts.
+</Callout>
+
+- Dynamic values in event names.
+- Revenue numbers computed from client-side events.
+- Emails or names sent as event properties.

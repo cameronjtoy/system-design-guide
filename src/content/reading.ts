@@ -152,6 +152,53 @@ export const READING: ReadingGroup[] = [
     ],
   },
   {
+    id: 'product-and-data',
+    title: 'Product engineering and data design',
+    intro: 'For product engineers and PMs: requirements, metrics, decisions, and data that stays clean as products grow.',
+    items: [
+      {
+        title: 'Design Docs at Google (Industrial Empathy)',
+        url: 'https://www.industrialempathy.com/posts/design-docs-at-google/',
+        note: 'What goes into a design doc, why goals and non-goals come first, and when not to write one.',
+      },
+      {
+        title: 'Choose Boring Technology (Dan McKinley)',
+        url: 'https://mcfunley.com/choose-boring-technology',
+        note: 'The "innovation tokens" essay on spending novelty only where it makes your product different.',
+      },
+      {
+        title: 'Feature Toggles (Martin Fowler)',
+        url: 'https://martinfowler.com/articles/feature-toggles.html',
+        note: 'Release, experiment, ops and permission flags, and how to keep them from becoming debt.',
+      },
+      {
+        title: 'Measuring the User Experience on a Large Scale (Google HEART paper)',
+        url: 'https://research.google/pubs/pub36299/',
+        note: 'The HEART framework and the Goals → Signals → Metrics process for product metrics.',
+      },
+      {
+        title: 'Local-first software (Ink & Switch)',
+        url: 'https://www.inkandswitch.com/local-first/',
+        note: 'The essay that defined local-first apps and the role of CRDTs in making them practical.',
+      },
+      {
+        title: 'Online migrations at scale (Stripe)',
+        url: 'https://stripe.com/blog/online-migrations',
+        note: 'The dual-write, change reads, change writes, remove pattern for moving live data.',
+      },
+      {
+        title: "Don't Do This (PostgreSQL wiki)",
+        url: 'https://wiki.postgresql.org/wiki/Don%27t_Do_This',
+        note: 'A short list of schema and type mistakes, from timestamps without time zones to money types.',
+      },
+      {
+        title: 'Tracking plan best practices (Twilio Segment)',
+        url: 'https://www.twilio.com/docs/segment/protocols/tracking-plan/best-practices',
+        note: 'Naming conventions and structure for analytics events that stay usable.',
+      },
+    ],
+  },
+  {
     id: 'ai-infrastructure',
     title: 'AI infrastructure',
     intro: 'Primary sources behind the AI infrastructure track: serving, training and building on large models.',

@@ -1,0 +1,77 @@
+---
+title: Soft deletes, audit logs and history
+summary: Decide how data is deleted, how changes are recorded and how long history is kept. Recoverable deletion turns mistakes into an undo; audit logs answer "who changed this?"; and none of it should conflict with users' right to have their data truly deleted.
+difficulty: intermediate
+order: 6
+tags: [soft-delete, audit-log, history, temporal-data, deletion, recovery]
+companies: [Atlassian, GitLab]
+related: [backups-and-disaster-recovery, event-sourcing, pii-privacy-and-retention, constraints-and-validation, multi-tenant-data-isolation]
+sources:
+  - title: Soft Deletion Probably Isn't Even That Good (Brandur Leach)
+    url: https://brandur.org/soft-deletion
+  - title: Post-Incident Review on the Atlassian April 2022 outage
+    url: https://www.atlassian.com/engineering/post-incident-review-april-2022-outage
+---
+
+## The problem it solves
+
+A user deletes a project by mistake and wants it back. A support engineer needs to know who changed a customer's plan. A script deletes the wrong customers' data. Regulators ask for every access to a patient's record. All of these depend on decisions about deletion and history that are made, or not made, when tables are first created.
+
+## How it works
+
+### Deletion strategies
+
+| Strategy | How | Good for | Watch out for |
+|---|---|---|---|
+| **Hard delete** | `DELETE` the row | Simple data, legal deletion | No undo |
+| **Soft delete** | `deleted_at` column; queries filter it out | User-facing undo, "trash" | Every query must filter; unique constraints and foreign keys get tricky |
+| **Archive table** | Move deleted rows (often as JSON) to a separate table | Recovery and investigation | Restoring requires a code path |
+| **Delayed hard delete** | Mark for deletion, purge after N days | Recoverable mistakes, then real deletion | Purge job must be reliable |
+
+Brandur Leach's essay argues that a `deleted_at` column on every table is often more trouble than it's worth: queries forget the filter, foreign keys stop meaning much, and the data is rarely actually restored. He suggests a single `deleted_record` table that stores deleted rows as JSON instead. A common combined approach: **user-visible trash** for the few objects users actually restore (documents, projects), plus a **delayed purge** for everything else.
+
+### Audit logs
+
+An audit log is an append-only record of **who did what, to what, when, from where**:
+
+```json
+{ "at": "2026-05-02T14:03:11Z", "actor": "user_83", "action": "plan.changed",
+  "target": "org_12", "before": {"plan": "pro"}, "after": {"plan": "free"},
+  "ip": "203.0.113.7", "request_id": "req_9f2" }
+```
+
+- Write it in the same transaction as the change (or via the [outbox](/principles/transactional-outbox)) so it can't be skipped.
+- Make it append-only and access-controlled; admins shouldn't be able to edit it.
+- Expose relevant parts to customers in B2B products; enterprise buyers often require it.
+
+### History and versions
+
+For data where past states matter (prices, contracts, documents), keep versions: a history table updated by triggers or application code, database temporal tables, or full [event sourcing](/principles/event-sourcing) where the log of changes is the source of truth.
+
+## Trade-offs
+
+- **Recoverability vs privacy:** soft-deleted data is still personal data. When a user asks for deletion, it must really go, including from soft-delete tables, logs and (eventually) backups. See [PII and privacy](/principles/pii-privacy-and-retention).
+- **Storage and query cost:** history grows forever unless you set retention.
+- **Audit detail vs sensitivity:** don't copy passwords, tokens or full card numbers into audit logs.
+
+## In the real world
+
+<Callout type="warning" title="Atlassian: deletion without an undo">
+In April 2022, an Atlassian maintenance script was given the IDs of entire customer sites instead of an app, and it ran in a mode that **permanently** deleted data rather than marking it for deletion. Restoring 883 sites from backups took up to two weeks. Afterwards Atlassian made deletion recoverable by default, with permanent deletion as a separate, gated step. See [Atlassian's site deletion](/postmortems/atlassian-site-deletion-2022).
+</Callout>
+
+GitLab's 2017 database deletion is the other half of the lesson: recoverable deletion protects against application mistakes, but only tested [backups](/principles/backups-and-disaster-recovery) protect against deleting the database itself. See [GitLab](/postmortems/gitlab-database-deletion-2017).
+
+## Interview angle
+
+<Callout type="interview">
+Mention how deletes work for the main entities ("soft delete with a 30-day purge for documents; hard delete for sessions") and that admin and billing changes are written to an append-only audit log in the same transaction.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Decide which objects users can restore and for how long, what customers can see in an audit log, and how long data is kept after an account closes. These are product, legal and engineering decisions at once.
+</Callout>
+
+- `deleted_at` on every table with queries that forget to filter it.
+- Bulk-deletion scripts with no dry-run or recoverable mode.
+- "Deleted" data that's never actually purged, despite privacy promises.
