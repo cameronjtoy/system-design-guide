@@ -1,0 +1,77 @@
+---
+title: Feature flags and A/B experiments
+summary: Separate deploying code from releasing features, and measure whether a change actually helps before rolling it out to everyone. Flags and experiments are powerful, but stale flags are debt and bad experiment practice produces confident wrong answers.
+difficulty: intermediate
+order: 5
+tags: [feature-flags, ab-testing, experimentation, statistics, release-management]
+companies: [Knight Capital, Microsoft, Google]
+related: [progressive-delivery, product-metrics-and-instrumentation, secrets-and-config-management, reversible-decisions-and-mvp]
+sources:
+  - title: Feature Toggles (aka Feature Flags) (Martin Fowler)
+    url: https://martinfowler.com/articles/feature-toggles.html
+  - title: How Not To Run an A/B Test (Evan Miller)
+    url: https://www.evanmiller.org/how-not-to-run-an-ab-test.html
+---
+
+## The problem it solves
+
+Without flags, releasing a feature means deploying code, and rolling back means another deploy. Without experiments, teams ship changes based on opinion and never learn which ones helped, which hurt, and which did nothing.
+
+## How it works
+
+### Feature flags
+
+A flag is a runtime switch: `if flags.enabled("new_checkout", user) { ... }`. Martin Fowler's article groups them by purpose, and each type has a different lifetime:
+
+| Type | Purpose | Lifetime | Example |
+|---|---|---|---|
+| Release | Hide unfinished work; gradual rollout | Days to weeks | New checkout behind a flag |
+| Experiment | A/B test variants | Weeks | Two onboarding flows |
+| Ops | Kill switches, degrade under load | Long-lived | Turn off recommendations |
+| Permission | Plans, betas, internal users | Long-lived | Enterprise-only features |
+
+Flags enable [progressive delivery](/principles/progressive-delivery): turn a feature on for employees, then 1%, 10%, 50% and 100% of users, watching metrics at each step, and turn it off in seconds if something breaks.
+
+### A/B experiments
+
+1. **Hypothesis:** "Showing shipping cost earlier will increase completed checkouts."
+2. **Metrics:** one primary metric decided in advance, plus **guardrail metrics** that must not get worse (latency, errors, refunds, unsubscribes).
+3. **Randomize** users (not requests) into control and treatment with a stable hash of user ID.
+4. **Size** the test: compute how many users you need to detect the smallest effect you care about.
+5. **Run** for the planned duration, typically full weeks to cover weekday and weekend behavior.
+6. **Decide** on the pre-registered metric; write up the result either way.
+
+### The classic statistical mistakes
+
+- **Peeking:** checking results daily and stopping as soon as they look significant greatly inflates false positives. Evan Miller's article explains why and how to avoid it: fix the sample size in advance, or use sequential methods designed for continuous monitoring.
+- **Too many metrics:** test 20 metrics and one will look significant by chance.
+- **Sample ratio mismatch:** if a 50/50 split comes out 52/48, something in the assignment or logging is broken; don't trust the result.
+- **Novelty effects:** users click new things because they're new; run long enough to see it fade.
+
+## Trade-offs
+
+- **Flag debt:** every flag doubles the code paths to test. Give release and experiment flags an owner and an expiry date, and remove them after full rollout.
+- **Config is code:** flag changes alter production behavior instantly, so they need review, audit logs and gradual rollout too. See [secrets and config management](/principles/secrets-and-config-management).
+- **Speed vs certainty:** experiments take weeks; not every change needs one. Use them for decisions that are uncertain and matter.
+
+## In the real world
+
+<Callout type="warning" title="Knight Capital: a reused flag woke up dead code">
+In 2012, Knight Capital reused an old flag for a new feature. One of eight servers didn't get the new code, and on that server the flag activated long-dead trading logic that sent millions of unintended orders, costing about $460 million in 45 minutes. Remove dead flags and dead code; never repurpose a flag. See [Knight Capital](/postmortems/knight-capital-2012).
+</Callout>
+
+Companies like Microsoft, Google, Netflix and Booking.com run thousands of controlled experiments a year, and their published experience is consistent: most ideas don't move the metric they were meant to, which is exactly why measuring matters.
+
+## Interview angle
+
+<Callout type="interview">
+When discussing a launch, say you'd ship behind a flag, roll out gradually while watching guardrail metrics, and keep a kill switch. For product questions, describe an experiment with a hypothesis, one primary metric, guardrails and a fixed sample size.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Write the hypothesis, primary metric, guardrails and minimum effect size before the experiment starts, and agree on what decision each outcome leads to. Ask for every flag's owner and removal date.
+</Callout>
+
+- Stopping experiments as soon as they look good.
+- Leaving release flags in the code forever.
+- Reusing an old flag name for a new purpose.
