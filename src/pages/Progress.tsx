@@ -5,6 +5,7 @@ import { PATHS, pathSteps } from '../content/paths'
 import { caseStudies, entryId, postmortems, practiceProblems, principles, principlesInCategory } from '../lib/content'
 import { countLearned, resetProgress, useLearned } from '../lib/progress'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { resetQuizStats, summarize, useQuizStats } from '../lib/quizStats'
 import { ProgressBar } from '../components/ProgressBar'
 import indexStyles from './IndexPage.module.css'
 import styles from './Progress.module.css'
@@ -13,6 +14,7 @@ export function Progress() {
   useDocumentTitle('My progress')
   const learned = useLearned()
   const [confirming, setConfirming] = useState(false)
+  const quiz = summarize(useQuizStats())
 
   const groups = [
     { label: 'Principles', ids: principles.map(entryId), to: '/principles' },
@@ -40,6 +42,34 @@ export function Progress() {
         </div>
         <ProgressBar done={totalDone} total={totalIds.length} label="Overall progress" showCount={false} />
       </div>
+
+      <section className={indexStyles.section}>
+        <h2>Quiz results</h2>
+        {quiz.answered === 0 ? (
+          <p className={indexStyles.sectionLead}>
+            You haven’t answered any questions yet. Every principle ends with a short quiz, or try{' '}
+            <Link to="/quiz">Quick practice</Link>.
+          </p>
+        ) : (
+          <div className={styles.quizStats}>
+            <div>
+              <span className={styles.quizNumber}>{quiz.answered}</span>
+              <span className={styles.bigLabel}>answers</span>
+            </div>
+            <div>
+              <span className={styles.quizNumber}>{Math.round((quiz.correct / quiz.answered) * 100)}%</span>
+              <span className={styles.bigLabel}>correct</span>
+            </div>
+            <div>
+              <span className={styles.quizNumber}>{quiz.missed}</span>
+              <span className={styles.bigLabel}>to review</span>
+            </div>
+            <Link to={quiz.missed > 0 ? '/quiz?mode=missed' : '/quiz'} className={styles.quizLink}>
+              {quiz.missed > 0 ? 'Review missed questions' : 'Keep practicing'}
+            </Link>
+          </div>
+        )}
+      </section>
 
       <section className={indexStyles.section}>
         <h2>By collection</h2>
@@ -94,12 +124,13 @@ export function Progress() {
         <h2>Start over</h2>
         {confirming ? (
           <div className={styles.confirm}>
-            <span>Clear all progress in this browser?</span>
+            <span>Clear all progress and quiz results in this browser?</span>
             <button
               type="button"
               className={styles.danger}
               onClick={() => {
                 resetProgress()
+                resetQuizStats()
                 setConfirming(false)
               }}
             >
@@ -114,7 +145,7 @@ export function Progress() {
             type="button"
             className={styles.secondary}
             onClick={() => setConfirming(true)}
-            disabled={learned.size === 0}
+            disabled={learned.size === 0 && quiz.answered === 0}
           >
             Reset progress
           </button>

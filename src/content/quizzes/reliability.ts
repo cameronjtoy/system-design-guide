@@ -1,0 +1,327 @@
+import type { QuizBank } from './types.ts'
+
+const quizzes: QuizBank = {
+  'timeouts-retries-and-backoff': [
+    {
+      type: 'choice',
+      q: 'Why add random jitter to exponential backoff?',
+      options: [
+        'So many clients that failed together don’t all retry at the same instant',
+        'To make retries faster',
+        'To reduce log volume',
+        'To encrypt retries',
+      ],
+      answer: 0,
+      explain: 'Without jitter, synchronized retries arrive in waves that can keep a recovering service down.',
+    },
+    {
+      type: 'choice',
+      q: 'A request passes through 4 layers, and each layer retries 3 times on failure. How many attempts can hit the bottom service?',
+      options: ['12', '81', '4', '3'],
+      answer: 1,
+      explain: 'Retries multiply across layers: 3⁴ = 81 attempts. Retry at one layer (usually the top), or use retry budgets.',
+    },
+    {
+      type: 'choice',
+      q: 'Which errors are generally safe to retry?',
+      options: [
+        'Timeouts and 503s on idempotent requests',
+        'A 400 Bad Request',
+        'A declined credit card',
+        'A 404 Not Found',
+      ],
+      answer: 0,
+      explain: 'Retry transient failures, and only when the operation is idempotent. Client errors and business rejections won’t change on retry.',
+    },
+    {
+      type: 'number',
+      q: 'A client waits 100 ms before its first retry and doubles the wait each time (100, 200, 400, …). Ignoring jitter, how long does it wait before the 5th retry?',
+      answer: 1600,
+      unit: 'ms',
+      tolerance: 0.05,
+      explain: 'Waits are 100, 200, 400, 800, 1,600 ms: 100 × 2⁴ = 1,600 ms before the 5th retry. Real clients cap the maximum wait and add jitter.',
+    },
+  ],
+  'circuit-breakers': [
+    {
+      type: 'choice',
+      q: 'What does an open circuit breaker do?',
+      options: [
+        'Fails calls immediately without contacting the unhealthy dependency',
+        'Retries every call three times',
+        'Sends calls to a random server',
+        'Blocks the caller until the dependency recovers',
+      ],
+      answer: 0,
+      explain: 'Failing fast protects the caller’s threads and gives the dependency room to recover. Fallbacks can serve something useful meanwhile.',
+    },
+    {
+      type: 'choice',
+      q: 'What happens in the half-open state?',
+      options: [
+        'A few trial requests are allowed through; success closes the breaker, failure reopens it',
+        'All traffic flows normally',
+        'The breaker is deleted',
+        'Only writes are allowed',
+      ],
+      answer: 0,
+      explain: 'Half-open probes whether the dependency has recovered without flooding it.',
+    },
+    {
+      type: 'choice',
+      q: 'Netflix’s Hystrix library popularized circuit breakers together with which other pattern?',
+      options: ['Fallbacks for each dependency call', 'Two-phase commit', 'Database sharding', 'Blue-green DNS'],
+      answer: 0,
+      explain: 'Each dependency call had a timeout, a breaker and a fallback (for example a non-personalized list) so one failure couldn’t take down the API.',
+    },
+  ],
+  bulkheads: [
+    {
+      type: 'choice',
+      q: 'What is the bulkhead pattern?',
+      options: [
+        'Isolating resources (thread pools, connections, queues) per dependency or tenant so one failure can’t exhaust everything',
+        'A firewall between data centers',
+        'Retrying in parallel',
+        'Caching at the edge',
+      ],
+      answer: 0,
+      explain: 'Named after ship compartments: a leak in one doesn’t sink the whole ship.',
+    },
+    {
+      type: 'choice',
+      q: 'A slow recommendation service ties up all 200 worker threads, so checkout fails too. Which fix is a bulkhead?',
+      options: [
+        'Give recommendation calls their own small thread pool with a cap',
+        'Add more retries',
+        'Increase the timeout',
+        'Remove the load balancer',
+      ],
+      answer: 0,
+      explain: 'Capping concurrency per dependency keeps capacity reserved for critical paths like checkout.',
+    },
+    {
+      type: 'choice',
+      q: 'Separate notification queues for password resets and marketing campaigns are an example of:',
+      options: ['Bulkheads', 'Sharding', 'Consensus', 'CDN caching'],
+      answer: 0,
+      explain: 'Isolating priority classes means a 50-million-message campaign can’t delay a password reset.',
+    },
+  ],
+  'cell-based-architecture': [
+    {
+      type: 'choice',
+      q: 'What is the main benefit of a cell-based architecture?',
+      options: [
+        'Limiting blast radius: a failure or bad deploy affects only the customers in one cell',
+        'Lower latency for every request',
+        'No need for monitoring',
+        'Unlimited capacity in one cell',
+      ],
+      answer: 0,
+      explain: 'Cells are independent copies of the stack, each serving a slice of customers, routed by a thin layer.',
+    },
+    {
+      type: 'choice',
+      q: 'What is the most critical component in a cell-based system?',
+      options: [
+        'The routing layer that maps customers to cells, which must be extremely simple and reliable',
+        'The biggest cell',
+        'The analytics pipeline',
+        'The CDN',
+      ],
+      answer: 0,
+      explain: 'Everything goes through the router, so it should do as little as possible and be the most stable part of the system.',
+    },
+    {
+      type: 'number',
+      q: 'A service runs in 20 equal cells. A bad deploy reaches only the first cell before being caught. What percentage of customers are affected?',
+      answer: 5,
+      unit: '%',
+      tolerance: 0.05,
+      explain: '1 of 20 cells = 5% of customers, compared with 100% for a single global deployment.',
+    },
+  ],
+  'graceful-degradation': [
+    {
+      type: 'choice',
+      q: 'An e-commerce product page’s reviews service is down. What does graceful degradation look like?',
+      options: [
+        'The page loads without the reviews section',
+        'The whole page shows an error',
+        'The page retries until reviews load',
+        'Users are logged out',
+      ],
+      answer: 0,
+      explain: 'Separate critical from optional dependencies. Optional ones fail quietly with a fallback or a hidden section.',
+    },
+    {
+      type: 'choice',
+      q: 'Which is a common degraded mode when the database can’t accept writes?',
+      options: ['Read-only mode', 'Deleting caches', 'Turning off authentication', 'Disabling TLS'],
+      answer: 0,
+      explain: 'Serving reads while clearly disabling edits keeps the product useful during write outages or migrations.',
+    },
+    {
+      type: 'choice',
+      q: 'Why must degraded modes be tested regularly?',
+      options: [
+        'Fallback paths are rarely exercised, so they often break silently until the day you need them',
+        'Testing makes them faster',
+        'Regulators require monthly tests',
+        'They cost nothing to run',
+      ],
+      answer: 0,
+      explain: 'Game days and chaos experiments prove that kill switches and fallbacks actually work.',
+    },
+  ],
+  'static-stability': [
+    {
+      type: 'choice',
+      q: 'What does it mean for a system to be statically stable?',
+      options: [
+        'It keeps working in its current state when a dependency (like the control plane) fails, without needing to make changes',
+        'It never changes code',
+        'It has no dependencies',
+        'It uses static IP addresses',
+      ],
+      answer: 0,
+      explain: 'For example, pre-provisioned capacity in each zone means losing a zone doesn’t require launching instances during the outage.',
+    },
+    {
+      type: 'choice',
+      q: 'Why is relying on the control plane during recovery risky?',
+      options: [
+        'Control planes are often overloaded or impaired during the same large incidents',
+        'Control planes are always slower than data planes',
+        'Control planes can’t create resources',
+        'It isn’t risky',
+      ],
+      answer: 0,
+      explain: 'In big outages, everyone tries to launch and reconfigure at once. Designs that don’t need those APIs to stay up are safer.',
+    },
+    {
+      type: 'choice',
+      q: 'A service runs in 3 zones and must survive losing one at full load. How should it be provisioned?',
+      options: [
+        'With enough capacity in the remaining 2 zones to carry 100% of traffic (about 150% total)',
+        'Exactly 100% total capacity',
+        'One zone only',
+        'Autoscale after the zone fails',
+      ],
+      answer: 0,
+      explain: 'Each zone runs at most two-thirds utilization, so the survivors can absorb the lost zone’s traffic immediately.',
+    },
+  ],
+  observability: [
+    {
+      type: 'choice',
+      q: 'Which signal helps most when finding which service in a chain of ten made one request slow?',
+      options: ['A distributed trace', 'A CPU graph', 'A count of log lines', 'An uptime check'],
+      answer: 0,
+      explain: 'Traces follow one request across services with timing for each span, showing exactly where time went.',
+    },
+    {
+      type: 'choice',
+      q: 'Why is putting user IDs as labels on a metrics time series usually a bad idea?',
+      options: [
+        'It creates huge cardinality, one series per user, which overwhelms metrics systems',
+        'User IDs are always secret',
+        'Metrics don’t support labels',
+        'It makes graphs too smooth',
+      ],
+      answer: 0,
+      explain: 'High-cardinality detail belongs in logs and traces; metrics should aggregate.',
+    },
+    {
+      type: 'choice',
+      q: 'What should alerts page on-call engineers for?',
+      options: [
+        'Symptoms users feel, like SLO burn rate on errors or latency',
+        'Every CPU spike above 70%',
+        'Every warning in the logs',
+        'Disk usage above 10%',
+      ],
+      answer: 0,
+      explain: 'Symptom-based alerts are actionable and reduce noise. Causes like CPU are for dashboards and investigation.',
+    },
+  ],
+  'chaos-engineering': [
+    {
+      type: 'choice',
+      q: 'What is the goal of chaos engineering?',
+      options: [
+        'To find weaknesses by deliberately injecting failures in controlled experiments',
+        'To cause random outages for fun',
+        'To replace testing',
+        'To measure developer productivity',
+      ],
+      answer: 0,
+      explain: 'Form a hypothesis about steady state, inject a failure, and see whether the system behaves as expected.',
+    },
+    {
+      type: 'choice',
+      q: 'Netflix’s Chaos Monkey does what?',
+      options: [
+        'Randomly terminates production instances so services must tolerate instance loss',
+        'Deletes databases',
+        'Floods services with fake users',
+        'Changes DNS records',
+      ],
+      answer: 0,
+      explain: 'Regular, expected instance failures pushed teams to build services that survive them without human intervention.',
+    },
+    {
+      type: 'choice',
+      q: 'How should a team start with chaos experiments?',
+      options: [
+        'Small blast radius, in staging or a small slice of production, with a clear way to stop',
+        'By shutting down a whole region on day one',
+        'Without telling anyone',
+        'Only during peak traffic',
+      ],
+      answer: 0,
+      explain: 'Begin with limited, reversible experiments and expand as confidence grows.',
+    },
+  ],
+  'progressive-delivery': [
+    {
+      type: 'choice',
+      q: 'What is a canary release?',
+      options: [
+        'Rolling a change out to a small percentage of traffic first and watching metrics before going further',
+        'Deploying only on Fridays',
+        'Deploying to every server at once',
+        'A release that is never rolled back',
+      ],
+      answer: 0,
+      explain: 'A canary catches problems while they affect few users, then proceeds in stages or rolls back automatically.',
+    },
+    {
+      type: 'choice',
+      q: 'The CrowdStrike 2024 outage taught which lesson about configuration and content updates?',
+      options: [
+        'They need staged rollouts just like code, because a bad config pushed everywhere at once breaks everything at once',
+        'Configuration should never change',
+        'Only code needs testing',
+        'Updates should be pushed to all customers simultaneously',
+      ],
+      answer: 0,
+      explain: 'A content update went to millions of Windows machines at once and crashed them. Staged rollout would have limited the damage.',
+    },
+    {
+      type: 'choice',
+      q: 'What makes automated rollback possible?',
+      options: [
+        'Clear health metrics compared between the new and old version during the rollout',
+        'Deploying at night',
+        'Larger servers',
+        'Manual approval of every request',
+      ],
+      answer: 0,
+      explain: 'Comparing error rate and latency of canary vs baseline lets the pipeline halt and roll back without a human.',
+    },
+  ],
+}
+
+export default quizzes

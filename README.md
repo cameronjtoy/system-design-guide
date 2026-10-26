@@ -82,6 +82,12 @@ Recommended sections: *What happened*, *Root cause*, *What changed*, *Lessons*.
 
 `src/content/paths.ts` defines the paths at `/#/paths`. Each step is `"<collection>/<slug>"`, for example `"principles/caching-strategies"` or `"practice/design-chat-app"`. Steps are validated by `check:content`.
 
+### Quizzes and math drills
+
+Every principle ends with a short quiz. Questions live in `src/content/quizzes/<category>.ts`, keyed by principle slug. Each question is either multiple choice (`type: 'choice'`, `options`, `answer` as an index) or a math estimate (`type: 'number'`, `answer`, optional `unit` and `tolerance`, the allowed relative error, 15% by default). Every question needs an `explain` that shows the reasoning. Options are shuffled when displayed, so explanations shouldn't refer to their position. `check:content --strict` fails if a principle has no questions.
+
+Generated math drills, with new numbers on every attempt, are defined in `src/lib/mathDrills.ts`. Quick practice (`/#/quiz`) mixes both, and results are stored in this browser only.
+
 ### Reading list
 
 `src/content/reading.ts` holds the curated links shown at `/#/reading`, grouped into engineering blogs, incident report collections, papers, books and UI design systems. Prefer primary sources written by the people who built the system.
