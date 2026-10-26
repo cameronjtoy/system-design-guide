@@ -91,6 +91,16 @@ export const CATEGORIES: CategoryMeta[] = [
     label: 'AI Infrastructure',
     description: 'Serving, training and grounding large models in production.',
   },
+  {
+    id: 'product',
+    label: 'Product Engineering',
+    description: 'For product engineers and PMs: turning user needs into systems, measuring them and shipping safely.',
+  },
+  {
+    id: 'data-design',
+    label: 'Data Design & Hygiene',
+    description: 'Designing data for applications and keeping it correct, private and trustworthy as it grows.',
+  },
 ]
 
 export const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'] as const

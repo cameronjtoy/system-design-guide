@@ -231,4 +231,62 @@ export const PATHS: LearningPath[] = [
       },
     ],
   },
+  {
+    slug: 'product-engineers-and-pms',
+    title: 'For product engineers and PMs',
+    summary: 'How product decisions turn into system design: requirements, performance, failure states, experiments, metrics and the data decisions that are hard to undo.',
+    audience: 'Product engineers, product managers and anyone who writes specs',
+    duration: 'About 1–2 weeks',
+    sections: [
+      {
+        title: 'Speaking the same language',
+        steps: ['principles/requirements-to-system-design', 'principles/back-of-the-envelope-estimation', 'principles/availability-and-the-nines', 'principles/slis-slos-and-error-budgets'],
+      },
+      {
+        title: 'What users feel',
+        steps: ['principles/performance-as-a-feature', 'principles/optimistic-ui-and-local-first', 'principles/designing-failure-states', 'principles/graceful-degradation'],
+      },
+      {
+        title: 'Shipping and learning',
+        steps: ['principles/feature-flags-and-experimentation', 'principles/progressive-delivery', 'principles/product-metrics-and-instrumentation', 'principles/analytics-event-design', 'postmortems/knight-capital-2012'],
+      },
+      {
+        title: 'Making good decisions',
+        steps: ['principles/reversible-decisions-and-mvp', 'principles/design-docs-and-decision-records', 'principles/simplicity-and-technical-debt', 'case-studies/prime-video-monolith'],
+      },
+      {
+        title: 'Data decisions that last',
+        steps: ['principles/designing-data-for-applications', 'principles/multi-tenant-data-isolation', 'principles/pii-privacy-and-retention', 'principles/soft-deletes-audit-and-history', 'postmortems/atlassian-site-deletion-2022'],
+      },
+    ],
+  },
+  {
+    slug: 'data-design-and-hygiene',
+    title: 'Designing data for applications',
+    summary: 'From a product spec to a schema you can live with: entities, keys, types, constraints, migrations, privacy, and keeping analytics data trustworthy.',
+    audience: 'Application engineers and anyone who designs schemas',
+    duration: 'About 1–2 weeks',
+    sections: [
+      {
+        title: 'Modeling',
+        steps: ['principles/designing-data-for-applications', 'principles/sql-vs-nosql', 'principles/data-modeling-and-denormalization', 'principles/database-indexing'],
+      },
+      {
+        title: 'Getting the details right',
+        steps: ['principles/identifiers-and-keys', 'principles/data-types-time-and-money', 'principles/constraints-and-validation', 'principles/transactions-and-isolation-levels', 'postmortems/azure-leap-day-2012'],
+      },
+      {
+        title: 'Changing and deleting safely',
+        steps: ['principles/zero-downtime-schema-migrations', 'principles/soft-deletes-audit-and-history', 'principles/backups-and-disaster-recovery', 'case-studies/notion-sharding-postgres', 'postmortems/gitlab-database-deletion-2017'],
+      },
+      {
+        title: 'Many customers, personal data',
+        steps: ['principles/multi-tenant-data-isolation', 'principles/pii-privacy-and-retention', 'case-studies/shopify-pods'],
+      },
+      {
+        title: 'Data beyond the app',
+        steps: ['principles/operational-vs-analytical-data', 'principles/analytics-event-design', 'principles/data-contracts-and-quality', 'case-studies/linkedin-kafka-and-the-log'],
+      },
+    ],
+  },
 ]

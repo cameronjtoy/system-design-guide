@@ -1,0 +1,90 @@
+---
+title: Design docs and decision records
+summary: Write down the problem, the options and why you chose one, before building. Design docs catch expensive mistakes while they're cheap, and short decision records explain to future teammates why the system looks the way it does.
+difficulty: beginner
+order: 8
+tags: [design-docs, rfcs, adrs, documentation, collaboration, decision-making]
+companies: [Google, Amazon]
+related: [requirements-to-system-design, reversible-decisions-and-mvp, simplicity-and-technical-debt, api-design-and-versioning]
+sources:
+  - title: Design Docs at Google (Industrial Empathy)
+    url: https://www.industrialempathy.com/posts/design-docs-at-google/
+  - title: Documenting Architecture Decisions (Michael Nygard)
+    url: https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+---
+
+## The problem it solves
+
+Two months into a project, someone asks "why didn't we just use the existing queue?" and nobody remembers. Or a team builds for weeks before discovering that another team, security, or the PM had a requirement that invalidates the design. Discussing designs only in meetings and chat loses the reasoning.
+
+## How it works
+
+### The design doc
+
+A design doc (also called an RFC or tech spec) is written **before** significant building starts and reviewed by the people affected. A typical structure, drawn from Google's practice:
+
+1. **Context and scope:** what's the situation, briefly.
+2. **Goals and non-goals:** what this must achieve, and what it explicitly won't.
+3. **The design:** overview diagram, APIs, data model and storage, key flows.
+4. **Alternatives considered:** the other options and why they lost. Often the most valuable section.
+5. **Cross-cutting concerns:** security, privacy, reliability, observability, cost, migration and rollout.
+6. **Open questions.**
+
+Keep it as short as the problem allows; a few pages is typical. The point is the **trade-offs**, not a complete specification.
+
+### When to write one
+
+Write one when a decision is expensive to reverse, affects several teams, introduces a new technology or dependency, or when reasonable people would disagree. Skip it for small, reversible changes. See [reversible decisions](/principles/reversible-decisions-and-mvp).
+
+### Architecture decision records (ADRs)
+
+Michael Nygard proposed **ADRs** in 2011: short documents, one per significant decision, kept in the repository next to the code.
+
+```
+# ADR 012: Use PostgreSQL row-level security for tenant isolation
+
+Status: Accepted (2026-03-04)
+
+Context: Every table carries tenant_id. Application-level filters were
+missed twice in code review last quarter.
+
+Decision: Enable row-level security on all tenant tables; the app sets
+the tenant for each connection.
+
+Consequences: Defense in depth against missing filters. Background jobs
+must set a tenant explicitly. Slight per-query overhead.
+```
+
+ADRs are never edited after acceptance; a later decision **supersedes** an earlier one, so the history of reasoning stays intact.
+
+### The review
+
+Share the doc with engineers on affected systems, security, the PM and on-call owners. Comments in the doc beat meetings for most of the discussion; hold a meeting only for disagreements that need it.
+
+## Trade-offs
+
+- **Time:** writing takes days; skipping it can cost months. Match depth to risk.
+- **Docs go stale:** design docs capture intent at a point in time; ADRs and code comments carry what's still true.
+- **Process creep:** mandatory templates for every change slow teams; keep it lightweight.
+
+## In the real world
+
+<Callout type="example" title="Google: the design doc as a review tool">
+A former Google engineer describes design docs at Google as informal documents written before coding, with goals and non-goals, the design and its trade-offs, and alternatives considered. Their main value is getting feedback early, when changing the design is cheap, and building consensus across teams. The author notes they aren't worth it when the solution is obvious and uncontroversial.
+</Callout>
+
+Amazon is known for narrative six-page memos read at the start of meetings in place of slides, and many companies run lightweight RFC processes for engineering changes. The common thread is that writing forces clear thinking and lets more people review asynchronously.
+
+## Interview angle
+
+<Callout type="interview">
+In behavioral and senior-level interviews, describe a design doc you wrote: the problem, the alternatives, the trade-off you chose and what you learned. In a system design interview, structure your answer the same way: goals, high-level design, deep dives, alternatives.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Review the goals, non-goals and alternatives sections; that's where product intent gets turned into technical scope. Your product spec and the design doc should agree on the non-goals.
+</Callout>
+
+- Writing the doc after the system is built.
+- Leaving out alternatives, so reviewers can't tell if the choice was considered.
+- Long documents that hide the decision.

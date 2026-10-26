@@ -18,6 +18,7 @@ import {
   type Source,
 } from '../src/content/meta.ts'
 import { PATHS } from '../src/content/paths.ts'
+import { QUIZZES } from '../src/content/quizzes/index.ts'
 
 export interface Problem {
   file: string
@@ -290,6 +291,31 @@ export function loadContent(root: string): LoadResult {
     pathSlugs.add(path.slug)
     for (const step of path.sections.flatMap((s) => s.steps)) {
       if (!known.has(`/${step}`)) problems.push({ file, message: `step "${step}" does not exist`, level: 'error' })
+    }
+  }
+
+  // Quiz questions are keyed by principle slug. Every principle should have
+  // some; a missing quiz is a warning, so strict mode requires one.
+  for (const [slug, questions] of Object.entries(QUIZZES)) {
+    const file = `/src/content/quizzes#${slug}`
+    if (!principleSlugs.has(slug)) problems.push({ file, message: `quiz for unknown principle "${slug}"`, level: 'error' })
+    questions.forEach((q, i) => {
+      const where = `question ${i + 1}`
+      if (!q.q.trim() || !q.explain.trim()) problems.push({ file, message: `${where} needs a prompt and an explanation`, level: 'error' })
+      if (q.type === 'choice') {
+        if (q.options.length < 2) problems.push({ file, message: `${where} needs at least two options`, level: 'error' })
+        if (new Set(q.options).size !== q.options.length) problems.push({ file, message: `${where} has duplicate options`, level: 'error' })
+        if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer >= q.options.length) {
+          problems.push({ file, message: `${where} answer index is out of range`, level: 'error' })
+        }
+      } else if (!Number.isFinite(q.answer) || (q.tolerance !== undefined && !(q.tolerance > 0 && q.tolerance < 1))) {
+        problems.push({ file, message: `${where} needs a finite answer and a tolerance between 0 and 1`, level: 'error' })
+      }
+    })
+  }
+  for (const e of entries) {
+    if (e.collection === 'principles' && !QUIZZES[e.slug]?.length) {
+      problems.push({ file: e.file, message: 'has no quiz questions in src/content/quizzes', level: 'warning' })
     }
   }
 

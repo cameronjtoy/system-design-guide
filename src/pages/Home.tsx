@@ -37,6 +37,9 @@ export function Home() {
               Start learning <ArrowRightIcon width={18} height={18} />
             </Link>
           )}
+          <Link to="/quiz" className={styles.secondary}>
+            Quick practice
+          </Link>
           <Link to="/postmortems" className={styles.secondary}>
             Browse outages
           </Link>

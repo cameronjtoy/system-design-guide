@@ -1,0 +1,77 @@
+---
+title: Simplicity, build vs buy and technical debt
+summary: The cheapest system to run is the one you didn't build. Choose boring technology, buy what isn't your differentiator, and take on technical debt deliberately, with a plan to pay it back.
+difficulty: intermediate
+order: 9
+tags: [technical-debt, build-vs-buy, simplicity, monolith, architecture, prioritization]
+companies: [Amazon, Prime Video]
+related: [reversible-decisions-and-mvp, design-docs-and-decision-records, stateless-services, observability]
+sources:
+  - title: Technical Debt Quadrant (Martin Fowler)
+    url: https://martinfowler.com/bliki/TechnicalDebtQuadrant.html
+  - title: Choose Boring Technology (Dan McKinley)
+    url: https://mcfunley.com/choose-boring-technology
+---
+
+## The problem it solves
+
+Teams often design for a scale they don't have, adopt new technologies because they're exciting, or build infrastructure that's available off the shelf. Meanwhile, shortcuts taken under deadline pressure pile up until every change is slow and risky. Both waste the scarcest resource: engineering time spent on what makes the product better.
+
+## How it works
+
+### Start simple
+
+- A **monolith** with a single relational database serves far more users than most products ever reach. Split services when team size or genuinely different scaling needs demand it, not by default.
+- Scale in steps: add caching, read replicas and a queue before sharding or rewriting.
+- Prefer managed services for undifferentiated infrastructure (databases, queues, auth, email).
+
+Dan McKinley's essay **"Choose Boring Technology"** suggests every team has a few "innovation tokens" to spend. Spend them on what makes your product unique, and use well-understood tools for everything else, because their failure modes are known.
+
+### Build vs buy
+
+| Ask | Leans build | Leans buy |
+|---|---|---|
+| Is it core to what makes us different? | Yes | No |
+| Does a mature product fit 80%+ of needs? | No | Yes |
+| Total cost including on-call and upgrades? | Lower in-house | Lower bought |
+| Lock-in risk and data ownership? | Critical | Acceptable |
+| Time to market matters most? | No | Yes |
+
+The forgotten cost of building is **operating** it: on-call, upgrades, security patches and the people who understand it leaving.
+
+### Technical debt, deliberately
+
+Martin Fowler's **technical debt quadrant** distinguishes debt by whether it was deliberate and whether it was prudent:
+
+| | Reckless | Prudent |
+|---|---|---|
+| **Deliberate** | "We don't have time for design" | "We must ship now and deal with the consequences" |
+| **Inadvertent** | "What's layering?" | "Now we know how we should have done it" |
+
+Prudent, deliberate debt is a legitimate tool: ship sooner, learn, then pay it back. Make it visible: record it (an ADR or ticket), estimate its "interest" (slower changes, incidents), and budget time to repay it, for example a fixed share of each cycle.
+
+## Trade-offs
+
+- **Simple now vs rewrite later:** simple designs may need rework at 100× scale; that's usually a good problem to have, if the data model and interfaces allow it. See [reversible decisions](/principles/reversible-decisions-and-mvp).
+- **Buying isn't free:** vendors have outages, price changes and limits; keep an exit path for critical dependencies.
+- **Debt compounds:** small shortcuts in the data model or core APIs grow far faster than shortcuts in leaf features.
+
+## In the real world
+
+<Callout type="example" title="Prime Video: back to a monolith">
+A Prime Video team built a stream-quality monitoring tool from serverless functions and orchestration workflows. It hit scaling limits at about 5% of the expected load and was expensive, because data moved between many small components. Merging it into a single process cut infrastructure costs by over 90%. The lesson isn't "monoliths good, microservices bad"; it's to choose the architecture that fits the workload. See [Prime Video moves to a monolith](/case-studies/prime-video-monolith).
+</Callout>
+
+## Interview angle
+
+<Callout type="interview">
+Start with the simplest design that meets the requirements and say what would trigger the next step ("when writes exceed what one primary can handle, shard by tenant"). Using managed services for commodity pieces is a sign of judgment, not a shortcut.
+</Callout>
+
+<Callout type="tip" title="For PMs">
+Ask for technical debt to be visible on the roadmap with its cost in slower delivery or incidents, and agree on a regular budget to pay it down. Treat "buy vs build" as a product decision about where the team's time creates value.
+</Callout>
+
+- Microservices and Kubernetes for a product with three engineers.
+- Building in-house what a mature service does well.
+- Untracked debt that only surfaces as "everything takes longer now".

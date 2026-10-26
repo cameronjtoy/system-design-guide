@@ -1,0 +1,318 @@
+import type { QuizBank } from './types.ts'
+
+const quizzes: QuizBank = {
+  'vertical-vs-horizontal-scaling': [
+    {
+      type: 'choice',
+      q: 'What is the main limitation of scaling vertically (a bigger machine)?',
+      options: [
+        'There is a hardware ceiling, cost rises steeply, and the machine is still a single point of failure',
+        'It requires rewriting the application as microservices',
+        'It makes the network slower',
+        'It cannot be done in the cloud',
+      ],
+      answer: 0,
+      explain: 'Vertical scaling is simple and often the right first step, but the largest machine has limits and one machine can still fail.',
+    },
+    {
+      type: 'choice',
+      q: 'What does horizontal scaling require from the application tier?',
+      options: [
+        'That any instance can serve any request, so no instance holds unique state',
+        'That every instance has a GPU',
+        'That all instances share one process',
+        'That requests are processed in strict global order',
+      ],
+      answer: 0,
+      explain: 'Adding machines only helps if work can be spread across them, which means keeping state outside the instances (databases, caches, object storage).',
+    },
+    {
+      type: 'choice',
+      q: 'Which component is usually hardest to scale horizontally?',
+      options: ['Stateless web servers', 'A relational database handling writes', 'A CDN', 'Static file hosting'],
+      answer: 1,
+      explain: 'Stateless tiers scale by adding copies. Write-heavy databases need replication, partitioning or a different store, which is where most scaling work goes.',
+    },
+    {
+      type: 'number',
+      q: 'Peak load is 60,000 requests/s and each server handles 2,000 requests/s. Keeping servers at most 60% busy, how many servers do you need?',
+      answer: 50,
+      unit: 'servers',
+      tolerance: 0.1,
+      explain: 'Usable capacity per server = 2,000 × 0.6 = 1,200 requests/s. 60,000 ÷ 1,200 = 50 servers, plus spares for failures.',
+    },
+  ],
+  'stateless-services': [
+    {
+      type: 'choice',
+      q: 'A web server keeps user sessions in its own memory. What breaks when you add a second server behind a load balancer?',
+      options: [
+        'Users get logged out or lose carts when requests land on the other server',
+        'Nothing; sessions are shared automatically',
+        'The load balancer refuses to start',
+        'Database writes fail',
+      ],
+      answer: 0,
+      explain: 'In-memory session state ties a user to one server. Move sessions to a shared store (Redis, database) or a signed token so any server can handle any request.',
+    },
+    {
+      type: 'choice',
+      q: 'Why are “sticky sessions” a weak fix for stateful servers?',
+      options: [
+        'Load gets uneven and a server failure still loses its users’ state',
+        'They make requests slower by 10×',
+        'Browsers block them',
+        'They require HTTPS',
+      ],
+      answer: 0,
+      explain: 'Stickiness pins users to instances, which unbalances load and makes deploys and failures disruptive. Externalizing state is the durable fix.',
+    },
+    {
+      type: 'choice',
+      q: 'Where does state go in a typical stateless architecture?',
+      options: [
+        'Databases, caches, object storage and queues outside the service instances',
+        'Local disk on each instance',
+        'Global variables',
+        'The load balancer',
+      ],
+      answer: 0,
+      explain: 'Instances become disposable: they can be added, replaced or killed at any time because all durable state lives in dedicated stores.',
+    },
+  ],
+  'load-balancing': [
+    {
+      type: 'choice',
+      q: 'Requests vary widely in cost, and some servers are slower than others. Which algorithm adapts best?',
+      options: ['Round robin', 'Least outstanding requests (or power of two choices)', 'Random', 'Hash of client IP'],
+      answer: 1,
+      explain: 'Least-loaded strategies send work to servers with fewer requests in flight. “Power of two choices” picks two at random and uses the less loaded one, which works well at scale.',
+    },
+    {
+      type: 'choice',
+      q: 'What is the difference between L4 and L7 load balancing?',
+      options: [
+        'L4 routes by IP and port; L7 understands HTTP and can route by path, header or cookie',
+        'L4 is for databases and L7 is for caches',
+        'L7 is always faster than L4',
+        'There is no difference',
+      ],
+      answer: 0,
+      explain: 'Layer 4 balances TCP/UDP connections cheaply. Layer 7 terminates HTTP, so it can route /api and /images differently, retry, and inspect requests.',
+    },
+    {
+      type: 'choice',
+      q: 'Why do load balancers run health checks?',
+      options: [
+        'To stop sending traffic to instances that are down or unhealthy',
+        'To measure user satisfaction',
+        'To encrypt traffic',
+        'To warm caches',
+      ],
+      answer: 0,
+      explain: 'Health checks remove failed instances from rotation automatically. Deep health checks that test dependencies must be used carefully so a shared dependency doesn’t mark every instance unhealthy at once.',
+    },
+  ],
+  'cdn-and-edge-caching': [
+    {
+      type: 'choice',
+      q: 'Which content benefits most from a CDN?',
+      options: [
+        'Static assets and media that many users request',
+        'A user’s private bank balance',
+        'Database writes',
+        'One-time password codes',
+      ],
+      answer: 0,
+      explain: 'CDNs cache responses at edge locations near users. Popular, cacheable content gets the biggest win in latency and origin load.',
+    },
+    {
+      type: 'choice',
+      q: 'How do teams usually deploy a new version of app.js so users don’t get stale cached copies?',
+      options: [
+        'Put a content hash in the filename (app.3f9a.js) and cache it for a long time',
+        'Set the cache lifetime to one second',
+        'Ask users to clear their cache',
+        'Disable the CDN during deploys',
+      ],
+      answer: 0,
+      explain: 'Fingerprinted filenames are immutable, so they can be cached for a year; the HTML that references them changes with each deploy.',
+    },
+    {
+      type: 'choice',
+      q: 'What does an origin shield (mid-tier cache) protect against?',
+      options: [
+        'Many edge locations all missing at once and hammering the origin',
+        'DDoS attacks on DNS',
+        'Users with slow phones',
+        'TLS certificate expiry',
+      ],
+      answer: 0,
+      explain: 'Edges fetch from a regional shield instead of directly from the origin, collapsing many misses into one.',
+    },
+    {
+      type: 'number',
+      q: 'A site serves 50,000 requests/s and its CDN has a 95% hit rate. How many requests/s reach the origin?',
+      answer: 2500,
+      unit: 'requests/s',
+      tolerance: 0.05,
+      explain: '5% miss the cache: 50,000 × 0.05 = 2,500 requests/s. Raising the hit rate to 99% would cut that to 500.',
+    },
+  ],
+  'rate-limiting': [
+    {
+      type: 'choice',
+      q: 'Which algorithm allows short bursts while enforcing an average rate, storing only two numbers per key?',
+      options: ['Token bucket', 'Fixed window counter', 'Sliding window log', 'Round robin'],
+      answer: 0,
+      explain: 'A token bucket refills at a steady rate and holds up to a maximum. Requests spend tokens, so bursts up to the bucket size are allowed.',
+    },
+    {
+      type: 'choice',
+      q: 'What problem does a fixed-window counter have?',
+      options: [
+        'A client can send double the limit across a window boundary',
+        'It needs a GPU',
+        'It can’t be stored in Redis',
+        'It always rejects the first request',
+      ],
+      answer: 0,
+      explain: 'With a 100/minute limit, a client can send 100 at 0:59 and 100 at 1:00. Sliding windows or token buckets smooth this out.',
+    },
+    {
+      type: 'choice',
+      q: 'What should an API return when a client exceeds its rate limit?',
+      options: [
+        'HTTP 429 Too Many Requests with a Retry-After header',
+        'HTTP 500 Internal Server Error',
+        'HTTP 200 with an empty body',
+        'Silently drop the connection',
+      ],
+      answer: 0,
+      explain: '429 tells clients they are being limited, and Retry-After tells them when to try again so they can back off politely.',
+    },
+    {
+      type: 'choice',
+      q: 'Why are per-client rate limits not enough to protect a service from overload?',
+      options: [
+        'Every client can be within its limit while total traffic still exceeds capacity',
+        'Rate limits only work for GET requests',
+        'They are too slow to compute',
+        'Clients can’t see them',
+      ],
+      answer: 0,
+      explain: 'Rate limits enforce fairness between clients. Protecting total capacity needs load shedding and backpressure as well.',
+    },
+  ],
+  'api-gateways': [
+    {
+      type: 'choice',
+      q: 'Which responsibilities typically live in an API gateway?',
+      options: [
+        'Authentication, rate limiting, routing and request validation',
+        'Business logic for every feature',
+        'Database schema migrations',
+        'Training ML models',
+      ],
+      answer: 0,
+      explain: 'A gateway handles cross-cutting concerns at the edge so individual services don’t each reimplement them.',
+    },
+    {
+      type: 'choice',
+      q: 'What is a risk of putting too much logic in the gateway?',
+      options: [
+        'It becomes a bottleneck and a shared component every team must change',
+        'It makes TLS impossible',
+        'It stops load balancing',
+        'It can no longer route requests',
+      ],
+      answer: 0,
+      explain: 'Gateways should stay thin. Business logic there couples teams and turns every release into a gateway release.',
+    },
+    {
+      type: 'choice',
+      q: 'What is the “backend for frontend” (BFF) pattern?',
+      options: [
+        'A separate API layer per client type (web, iOS, Android) that shapes responses for that client',
+        'A database for frontend engineers',
+        'A CDN for JavaScript bundles',
+        'A testing framework',
+      ],
+      answer: 0,
+      explain: 'A BFF aggregates calls to backend services and returns exactly what one client needs, reducing round trips on mobile.',
+    },
+  ],
+  autoscaling: [
+    {
+      type: 'choice',
+      q: 'Why can autoscaling fail to save you during a sudden traffic spike?',
+      options: [
+        'New instances take minutes to start and warm up, which may be too slow',
+        'Autoscaling only works at night',
+        'Cloud providers forbid scaling during spikes',
+        'It removes instances during spikes',
+      ],
+      answer: 0,
+      explain: 'Scaling reacts after metrics rise, and boot, deploy and cache warm-up take time. Keep headroom, scale ahead of known events, and shed load meanwhile.',
+    },
+    {
+      type: 'choice',
+      q: 'For a queue-processing worker fleet, which metric is usually the best scaling signal?',
+      options: ['Queue depth or age of the oldest message', 'CPU of the database', 'Number of engineers on call', 'Disk size'],
+      answer: 0,
+      explain: 'Backlog directly measures unprocessed work. CPU can be low while workers wait on I/O and the queue grows.',
+    },
+    {
+      type: 'choice',
+      q: 'What is a common cause of autoscaling “flapping” (scaling up and down repeatedly)?',
+      options: [
+        'Thresholds too close together and no cooldown period',
+        'Too much logging',
+        'Using HTTPS',
+        'Having a load balancer',
+      ],
+      answer: 0,
+      explain: 'Use a gap between scale-out and scale-in thresholds and cooldowns, and scale in more slowly than you scale out.',
+    },
+  ],
+  'backpressure-and-load-shedding': [
+    {
+      type: 'choice',
+      q: 'A service is overloaded. Why is rejecting some requests quickly better than accepting all of them?',
+      options: [
+        'Accepted requests queue up, latency explodes, and eventually nearly every request times out',
+        'Rejecting requests uses more CPU',
+        'Clients prefer errors',
+        'It isn’t; you should always accept everything',
+      ],
+      answer: 0,
+      explain: 'Under overload, useful throughput can collapse toward zero as requests time out after doing work. Shedding keeps the rest fast.',
+    },
+    {
+      type: 'choice',
+      q: 'What is backpressure?',
+      options: [
+        'A consumer signaling upstream to slow down when it can’t keep up',
+        'A type of database index',
+        'Retrying failed requests faster',
+        'Compressing responses',
+      ],
+      answer: 0,
+      explain: 'Bounded queues, flow control and explicit “slow down” responses push the pressure back to producers instead of buffering without limit.',
+    },
+    {
+      type: 'choice',
+      q: 'When shedding load, which requests should you drop first?',
+      options: [
+        'Low-priority or background work, keeping critical user actions like checkout',
+        'The oldest customers’ requests',
+        'Random requests regardless of type',
+        'Health checks',
+      ],
+      answer: 0,
+      explain: 'Prioritize. Prefetches, analytics and batch jobs can wait; logins and payments should be the last to go.',
+    },
+  ],
+}
+
+export default quizzes

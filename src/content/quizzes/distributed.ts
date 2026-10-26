@@ -1,0 +1,357 @@
+import type { QuizBank } from './types.ts'
+
+const quizzes: QuizBank = {
+  idempotency: [
+    {
+      type: 'choice',
+      q: 'A payment request times out and the client retries. What prevents a double charge?',
+      options: [
+        'An idempotency key: the server stores the result for that key and returns it on retries',
+        'Retrying faster',
+        'Using HTTP POST instead of PUT',
+        'A longer timeout',
+      ],
+      answer: 0,
+      explain: 'The server records the key with the outcome; a repeat with the same key returns the original result instead of charging again.',
+    },
+    {
+      type: 'choice',
+      q: 'Which of these operations is naturally idempotent?',
+      options: ['Set the user’s email to x@example.com', 'Add $10 to the balance', 'Append a row to a log', 'Send a welcome email'],
+      answer: 0,
+      explain: 'Setting a value to a fixed result gives the same outcome however many times it runs. Increments and sends need keys or dedupe.',
+    },
+    {
+      type: 'choice',
+      q: 'How should idempotency keys be stored to work under concurrency?',
+      options: [
+        'With a unique constraint, inserted in the same transaction as the side effect',
+        'In a log file checked once a day',
+        'In the client only',
+        'In a cache with no expiry and no atomicity',
+      ],
+      answer: 0,
+      explain: 'Two simultaneous requests with the same key must not both pass a check. A unique constraint makes the second insert fail atomically.',
+    },
+  ],
+  'clocks-and-ordering': [
+    {
+      type: 'choice',
+      q: 'Why is “last write wins by wall-clock timestamp” risky across machines?',
+      options: [
+        'Clocks drift and jump, so a later write can carry an earlier timestamp and be discarded',
+        'Timestamps take too much storage',
+        'Databases can’t store timestamps',
+        'It is too slow',
+      ],
+      answer: 0,
+      explain: 'NTP keeps clocks close but not identical. Skew of even milliseconds can reorder concurrent writes and silently lose data.',
+    },
+    {
+      type: 'choice',
+      q: 'What does a Lamport clock give you?',
+      options: [
+        'An ordering consistent with causality: if A caused B, A’s timestamp is lower',
+        'The exact real time of every event',
+        'Detection of every concurrent write',
+        'Synchronized wall clocks',
+      ],
+      answer: 0,
+      explain: 'Lamport clocks respect happened-before. Vector clocks go further and can tell when two events are concurrent.',
+    },
+    {
+      type: 'choice',
+      q: 'How does Google Spanner make timestamps safe to use for ordering?',
+      options: [
+        'TrueTime exposes clock uncertainty, and commits wait out that uncertainty before becoming visible',
+        'It uses a single global clock server',
+        'It ignores clock skew',
+        'It orders writes alphabetically',
+      ],
+      answer: 0,
+      explain: 'GPS and atomic clocks keep uncertainty small (milliseconds), and commit wait guarantees timestamp order matches real order.',
+    },
+  ],
+  quorums: [
+    {
+      type: 'choice',
+      q: 'With N = 3 replicas, which settings guarantee a read overlaps the latest successful write?',
+      options: ['W = 2, R = 2', 'W = 1, R = 1', 'W = 1, R = 2', 'W = 2, R = 1'],
+      answer: 0,
+      explain: 'Reads see the latest write when R + W > N. With 2 + 2 > 3, every read set shares at least one replica with every write set.',
+    },
+    {
+      type: 'choice',
+      q: 'What is the trade-off of W = 1 in a quorum system?',
+      options: [
+        'Fast, highly available writes, but reads may miss the latest write unless R = N',
+        'Writes become slower',
+        'It doubles storage',
+        'It disables replication',
+      ],
+      answer: 0,
+      explain: 'Writing to one replica is quick and survives failures, but other replicas may be stale until anti-entropy catches up.',
+    },
+    {
+      type: 'number',
+      q: 'A cluster has N = 5 replicas and writes require W = 3. What is the smallest read quorum R that guarantees reading the latest write?',
+      answer: 3,
+      unit: 'replicas',
+      tolerance: 0.01,
+      explain: 'You need R + W > N: R + 3 > 5, so R ≥ 3.',
+    },
+  ],
+  'consensus-and-raft': [
+    {
+      type: 'choice',
+      q: 'How many node failures can a 5-node Raft cluster tolerate while still making progress?',
+      options: ['1', '2', '3', '4'],
+      answer: 1,
+      explain: 'Raft needs a majority (3 of 5) to elect a leader and commit entries, so it tolerates 2 failures.',
+    },
+    {
+      type: 'choice',
+      q: 'When is a Raft log entry considered committed?',
+      options: [
+        'When the leader has replicated it to a majority of nodes',
+        'When the leader writes it to its own disk',
+        'When every node has it',
+        'When a client reads it',
+      ],
+      answer: 0,
+      explain: 'A majority guarantees that any future leader (which also needs a majority) will have the entry.',
+    },
+    {
+      type: 'choice',
+      q: 'Why do consensus clusters usually have an odd number of nodes?',
+      options: [
+        'An even number adds a node without adding failure tolerance',
+        'Even numbers cause split brain by design',
+        'Raft only runs on odd hardware',
+        'It is a licensing requirement',
+      ],
+      answer: 0,
+      explain: '4 nodes need a majority of 3, tolerating 1 failure, the same as 3 nodes. The fourth node adds cost and latency without extra tolerance.',
+    },
+  ],
+  'leader-election': [
+    {
+      type: 'choice',
+      q: 'Why do leader leases have expiry times?',
+      options: [
+        'So a crashed or partitioned leader is replaced automatically after the lease runs out',
+        'To save memory',
+        'To make the leader faster',
+        'Because databases require it',
+      ],
+      answer: 0,
+      explain: 'Without expiry, a dead leader would hold leadership forever. With it, the cluster waits out the lease and elects another.',
+    },
+    {
+      type: 'choice',
+      q: 'What can still go wrong after a new leader is elected?',
+      options: [
+        'The old leader, paused or partitioned, may still believe it leads and keep writing',
+        'Nothing; elections are perfectly safe',
+        'All data is deleted',
+        'Clients can’t reconnect',
+      ],
+      answer: 0,
+      explain: 'A GC pause or partition can hide the old leader’s loss of leadership from itself. Fencing tokens stop its stale writes.',
+    },
+    {
+      type: 'choice',
+      q: 'Which tools are commonly used to implement leader election in practice?',
+      options: ['etcd, ZooKeeper or Consul', 'A CDN', 'DNS round robin', 'A message queue’s dead-letter queue'],
+      answer: 0,
+      explain: 'Coordination services built on consensus provide leases and watches, so applications don’t implement consensus themselves.',
+    },
+  ],
+  'split-brain-and-fencing': [
+    {
+      type: 'choice',
+      q: 'What is split brain?',
+      options: [
+        'Two nodes both believe they are the leader and accept conflicting writes',
+        'A database split into shards',
+        'A cache with two tiers',
+        'A service with two APIs',
+      ],
+      answer: 0,
+      explain: 'It usually follows a network partition or a paused leader. Conflicting writes can corrupt data.',
+    },
+    {
+      type: 'choice',
+      q: 'How does a fencing token prevent a stale leader from corrupting data?',
+      options: [
+        'Each new leader gets a higher number, and storage rejects writes carrying a lower one',
+        'It encrypts all writes',
+        'It shuts down the network',
+        'It doubles the lease time',
+      ],
+      answer: 0,
+      explain: 'Storage remembers the highest token it has seen, so writes from an old leader with a lower token are refused.',
+    },
+    {
+      type: 'choice',
+      q: 'In GitHub’s 2018 incident, a brief network partition caused a database failover across sites. What was the main consequence?',
+      options: [
+        'Writes landed on both sides and had to be reconciled, causing a long degraded period',
+        'All data was lost permanently',
+        'GitHub moved to a different database vendor overnight',
+        'Nothing; the failover was seamless',
+      ],
+      answer: 0,
+      explain: 'Writes were accepted in two places that then disagreed. Reconciling them while restoring consistency took about a day of degraded service.',
+    },
+  ],
+  'failure-detection-and-heartbeats': [
+    {
+      type: 'choice',
+      q: 'Why can’t a node tell the difference between a crashed peer and a slow network?',
+      options: [
+        'Both look the same: no reply arrives within the timeout',
+        'Crashed nodes send an error message',
+        'Networks are never slow',
+        'Heartbeats include the cause of failure',
+      ],
+      answer: 0,
+      explain: 'Failure detection is inherently a guess based on timeouts. That is why systems must handle false suspicions safely.',
+    },
+    {
+      type: 'choice',
+      q: 'What is the trade-off when choosing a heartbeat timeout?',
+      options: [
+        'Short timeouts detect failures fast but cause false alarms; long ones are stable but slow to react',
+        'Longer timeouts always detect faster',
+        'Timeouts don’t matter',
+        'Short timeouts use less network',
+      ],
+      answer: 0,
+      explain: 'Aggressive timeouts trigger needless failovers during brief slowdowns; conservative ones leave dead nodes in service longer.',
+    },
+    {
+      type: 'choice',
+      q: 'What problem does a gossip protocol solve for failure detection in large clusters?',
+      options: [
+        'It spreads membership and liveness information without every node pinging every other node',
+        'It encrypts heartbeats',
+        'It guarantees exactly-once delivery',
+        'It elects a leader',
+      ],
+      answer: 0,
+      explain: 'All-to-all heartbeats grow with N². Gossip shares state with a few random peers per round and converges quickly.',
+    },
+  ],
+  'service-discovery': [
+    {
+      type: 'choice',
+      q: 'What problem does service discovery solve?',
+      options: [
+        'Finding the current network addresses of healthy instances of a service as they come and go',
+        'Discovering new product features',
+        'Finding bugs in services',
+        'Choosing a database',
+      ],
+      answer: 0,
+      explain: 'In elastic environments instances change constantly, so clients need a registry or DNS that tracks healthy endpoints.',
+    },
+    {
+      type: 'choice',
+      q: 'What is a known weakness of DNS-based discovery?',
+      options: [
+        'Clients and resolvers cache records, so changes and failed instances take time to disappear',
+        'DNS cannot return multiple addresses',
+        'DNS only works on the public internet',
+        'DNS requires a service mesh',
+      ],
+      answer: 0,
+      explain: 'TTLs and client caching delay updates. Registries with health checks or a service mesh react faster.',
+    },
+    {
+      type: 'choice',
+      q: 'In client-side discovery, who picks which instance to call?',
+      options: [
+        'The calling service, using a list from the registry and its own load balancing',
+        'A central load balancer',
+        'The database',
+        'The end user',
+      ],
+      answer: 0,
+      explain: 'Client-side discovery avoids an extra hop but puts load-balancing logic in every client (often via a library or sidecar).',
+    },
+  ],
+  'distributed-transactions-and-sagas': [
+    {
+      type: 'choice',
+      q: 'What is a saga?',
+      options: [
+        'A sequence of local transactions where each failure triggers compensating actions for earlier steps',
+        'A global lock across all databases',
+        'A long-running SQL query',
+        'A type of database index',
+      ],
+      answer: 0,
+      explain: 'Instead of one atomic transaction across services, each step commits locally; if a later step fails, earlier ones are undone with compensations (refund, release).',
+    },
+    {
+      type: 'choice',
+      q: 'Why is two-phase commit (2PC) often avoided across microservices?',
+      options: [
+        'Participants hold locks while waiting for the coordinator, and a coordinator failure can block them',
+        'It is not atomic',
+        'It only works with NoSQL',
+        'It is too simple',
+      ],
+      answer: 0,
+      explain: '2PC gives atomicity but couples availability: every participant must be up, and blocked locks hurt throughput.',
+    },
+    {
+      type: 'choice',
+      q: 'Which is a valid compensating action for “charge the customer’s card”?',
+      options: ['Issue a refund', 'Delete the charge from your database', 'Ignore it', 'Retry the charge'],
+      answer: 0,
+      explain: 'Compensations are new business actions that semantically undo a step. You can’t erase the external effect, so you reverse it.',
+    },
+  ],
+  'exactly-once-delivery': [
+    {
+      type: 'choice',
+      q: 'Why is exactly-once delivery over a network impossible in general?',
+      options: [
+        'A sender can’t tell whether a lost acknowledgment means the message was processed, so it must choose between retrying (duplicates) or not (loss)',
+        'Networks deliver every message twice',
+        'Message queues forbid it',
+        'TCP prevents retries',
+      ],
+      answer: 0,
+      explain: 'This is the two generals problem in practice. Systems achieve exactly-once effects with at-least-once delivery plus idempotent processing.',
+    },
+    {
+      type: 'choice',
+      q: 'What does “effectively once” processing usually combine?',
+      options: [
+        'At-least-once delivery with deduplication or idempotent writes',
+        'At-most-once delivery with retries',
+        'No acknowledgments at all',
+        'Longer timeouts',
+      ],
+      answer: 0,
+      explain: 'Retries guarantee nothing is lost; dedupe keys or idempotent operations make duplicates harmless.',
+    },
+    {
+      type: 'choice',
+      q: 'A consumer processes a message, crashes before committing its offset, and restarts. What happens?',
+      options: [
+        'It processes the message again, so processing must be idempotent',
+        'The message is lost',
+        'The broker deletes the topic',
+        'Nothing; the broker knows it was processed',
+      ],
+      answer: 0,
+      explain: 'Offsets committed after processing give at-least-once semantics. Store the offset with the result in one transaction, or dedupe.',
+    },
+  ],
+}
+
+export default quizzes

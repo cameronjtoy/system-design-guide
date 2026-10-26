@@ -21,6 +21,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { toggleLearned, useLearned } from '../lib/progress'
 import { mdxComponents } from '../components/Mdx'
 import { Toc } from '../components/Toc'
+import { LessonQuiz } from '../components/Quiz'
 import { CardGrid, EntryCard } from '../components/EntryCard'
 import { DifficultyTag, Pill } from '../components/Tags'
 import { ArrowLeftIcon, ArrowRightIcon, CheckCircleIcon, CheckIcon, ExternalIcon } from '../components/Icons'
@@ -61,6 +62,11 @@ function footerSections(entry: Entry): Section[] {
     const stories = caseStudiesFor(entry.slug)
     const practice = practiceFor(entry.slug)
     const related = relatedPrinciples(entry)
+    sections.push({
+      id: 'auto-quiz',
+      title: 'Check yourself',
+      node: <LessonQuiz slug={entry.slug} category={entry.category} />,
+    })
     if (failures.length) {
       sections.push({
         id: 'auto-postmortems',

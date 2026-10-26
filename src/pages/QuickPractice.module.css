@@ -1,0 +1,133 @@
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.setup {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.setup .actions {
+  margin-top: 0;
+}
+
+.stats {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.roundHead {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.quit {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.quit:hover {
+  color: var(--accent-text);
+}
+
+.missedList,
+.drills {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.missedList li,
+.drills li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.missedList li span {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.missedList a,
+.drills a {
+  color: var(--accent-text);
+  font-size: 0.9rem;
+}
+
+.drills li {
+  justify-content: flex-start;
+}
+
+.drillName {
+  flex: 1 0 100%;
+  font-weight: 550;
+}
+
+.drillStat {
+  margin-left: auto;
+}
+
+/* Chip rows bleed to the card edge on phones, like they do on index pages. */
+@media (max-width: 639px) {
+  .setup [role='group'] {
+    margin: 0 -18px;
+    padding: 2px 18px;
+  }
+}
+
+.drillStat {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
