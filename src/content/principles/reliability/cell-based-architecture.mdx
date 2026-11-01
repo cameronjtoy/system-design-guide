@@ -19,6 +19,8 @@ Even a well-replicated service has failure modes that hit everything at once: a 
 
 ## How it works
 
+<Animation name="cell-based-architecture" />
+
 Split the service into **cells**: complete, independent copies of the whole stack (compute, storage, caches, queues), each serving a subset of customers or resources.
 
 - A thin **routing layer** maps each request to its cell, usually by a partition key such as customer ID, account ID or resource ID.

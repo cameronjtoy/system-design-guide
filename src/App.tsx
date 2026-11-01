@@ -8,6 +8,7 @@ import { Reading } from './pages/Reading'
 import { PathPage, PathsIndex } from './pages/Paths'
 import { Progress } from './pages/Progress'
 import { QuickPractice } from './pages/QuickPractice'
+import { Animations } from './pages/Animations'
 import { NotFound } from './pages/NotFound'
 
 // Hash URLs (/#/principles/...) because GitHub Pages can't route deep links in
@@ -30,6 +31,7 @@ export function App() {
           <Route path="paths/:slug" element={<PathPage />} />
           <Route path="progress" element={<Progress />} />
           <Route path="quiz" element={<QuickPractice />} />
+          <Route path="animations" element={<Animations />} />
           <Route path="reading" element={<Reading />} />
           <Route path="*" element={<NotFound />} />
         </Route>

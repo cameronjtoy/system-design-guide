@@ -21,6 +21,8 @@ Traditional batching (static or request-level batching) groups requests, runs th
 
 ## How it works
 
+<Animation name="continuous-batching" />
+
 **Continuous batching**, also called **iteration-level scheduling** or in-flight batching, makes scheduling decisions at **every decoding step**:
 
 1. At each iteration, the scheduler runs one decode step for every active sequence.

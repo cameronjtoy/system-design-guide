@@ -21,6 +21,8 @@ The simplest way to spread keys over N cache or database servers is `server = ha
 
 ## How it works
 
+<Animation name="consistent-hashing" />
+
 1. Hash every server onto a circle of positions (say 0 to 2³² − 1).
 2. Hash each key onto the same circle.
 3. A key belongs to the **first server clockwise** from its position.

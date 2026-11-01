@@ -88,6 +88,10 @@ Every principle ends with a short quiz. Questions live in `src/content/quizzes/<
 
 Generated math drills, with new numbers on every attempt, are defined in `src/lib/mathDrills.ts`. Quick practice (`/#/quiz`) mixes both, and results are stored in this browser only.
 
+### Animations
+
+Animated, step-by-step diagrams live in `src/animations/scenes/<principle-slug>.ts`, each exporting a `Scene` (see `src/animations/types.ts`): boxes with positions, connections, and steps. Each step has a caption, optional `packets` that travel between boxes (`phase` orders them within a step), and `set` / `after` changes to boxes (label, sub-label, tone, cells, visibility) applied when the step starts or once its packets arrive. Scenes use a 420 × 260 canvas by default. Place one in a lesson with `<Animation name="<slug>" />`, usually right under *How it works*. `check:content` fails on an unknown name. Every scene also appears on the Animations page (`/#/animations`).
+
 ### Reading list
 
 `src/content/reading.ts` holds the curated links shown at `/#/reading`, grouped into engineering blogs, incident report collections, papers, books and UI design systems. Prefer primary sources written by the people who built the system.

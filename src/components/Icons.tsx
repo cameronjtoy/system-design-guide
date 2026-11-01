@@ -106,3 +106,22 @@ export const LogoMark = (p: IconProps) => (
     <rect x="17" y="17" width="8" height="8" rx="1.5" fill="var(--accent-soft)" />
   </svg>
 )
+
+export const PlayIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M7 5l12 7-12 7z" fill="currentColor" />
+  </Icon>
+)
+
+export const PauseIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M8 5v14M16 5v14" strokeWidth="3" />
+  </Icon>
+)
+
+export const RestartIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 12a8 8 0 1 0 2.3-5.6" />
+    <path d="M4 4v4h4" />
+  </Icon>
+)

@@ -3,7 +3,7 @@
 // `npm run check:content`. Written with erasable TypeScript only so Node can
 // run it directly.
 
-import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, sep, basename } from 'node:path'
 import matter from 'gray-matter'
 import GithubSlugger from 'github-slugger'
@@ -243,6 +243,12 @@ export function loadContent(root: string): LoadResult {
 
     entries.push(entry)
     for (const m of body.matchAll(/\]\((\/[a-z-]+\/[a-z0-9-]+)\)/g)) links.push({ file, target: m[1] })
+    // <Animation name="..." /> must name a scene file in src/animations/scenes.
+    for (const m of body.matchAll(/<Animation\s+name="([^"]+)"/g)) {
+      if (!existsSync(join(root, 'src', 'animations', 'scenes', `${m[1]}.ts`))) {
+        problems.push({ file, message: `uses unknown animation "${m[1]}"`, level: 'error' })
+      }
+    }
     searchDocs.push({
       id: `${collection}/${slug}`,
       collection,

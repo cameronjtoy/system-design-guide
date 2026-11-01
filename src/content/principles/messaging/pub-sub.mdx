@@ -19,6 +19,8 @@ Pub/sub inverts this: the order service announces "an order was placed" once, an
 
 ## How it works
 
+<Animation name="pub-sub" />
+
 - **Publishers** send messages to a named **topic**.
 - **Subscribers** register interest in a topic; each subscription receives **its own copy** of every message.
 - Within a subscription, messages are spread across that subscriber's workers like a queue.

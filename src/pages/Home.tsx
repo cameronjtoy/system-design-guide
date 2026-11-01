@@ -40,6 +40,9 @@ export function Home() {
           <Link to="/quiz" className={styles.secondary}>
             Quick practice
           </Link>
+          <Link to="/animations" className={styles.secondary}>
+            Animations
+          </Link>
           <Link to="/postmortems" className={styles.secondary}>
             Browse outages
           </Link>

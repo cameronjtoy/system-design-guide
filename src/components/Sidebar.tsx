@@ -49,6 +49,9 @@ export function Sidebar() {
         <NavLink to="/quiz" className={linkClass}>
           Quick practice
         </NavLink>
+        <NavLink to="/animations" className={linkClass}>
+          Animations
+        </NavLink>
         <NavLink to="/practice" className={linkClass}>
           <span>Practice problems</span>
           <span className={styles.count}>{practiceProblems.length}</span>

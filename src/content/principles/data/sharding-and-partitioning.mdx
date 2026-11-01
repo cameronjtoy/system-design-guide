@@ -21,6 +21,8 @@ Replication helps reads, but every write still goes to one primary, and the whol
 
 ## How it works
 
+<Animation name="sharding-and-partitioning" />
+
 Each row is assigned to one shard based on a **shard key**. Each shard is an independent database (usually with its own replicas) holding a subset of the data.
 
 ### Strategies

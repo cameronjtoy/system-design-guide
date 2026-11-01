@@ -19,6 +19,8 @@ But a page load or search query rarely touches just one server. It fans out to t
 
 ## How it works
 
+<Animation name="tail-latency" />
+
 ### The fan-out math
 
 If each server is slow for 1% of requests, then the chance a request touching *n* servers sees at least one slow response is `1 − 0.99ⁿ`:
