@@ -21,6 +21,8 @@ Verifying several tokens at once costs about the same as generating one, because
 
 ## How it works
 
+<Animation name="speculative-decoding" />
+
 1. A **draft model**, much smaller and faster, generates the next *k* tokens (say 4) on its own.
 2. The **target model** (the large one) runs **one** forward pass over all *k* draft tokens, computing what it would have predicted at each position.
 3. Draft tokens are accepted left to right as long as they're consistent with the target model's probabilities (using a rejection-sampling rule). At the first rejected token, the target model's own prediction is used instead, and the rest are discarded.

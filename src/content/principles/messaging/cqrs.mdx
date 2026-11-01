@@ -19,6 +19,8 @@ Forcing both through one schema leads to slow, complicated queries or a write mo
 
 ## How it works
 
+<Animation name="cqrs" />
+
 - **Commands** (writes) go to the **write model**, which enforces business rules and stores the authoritative data.
 - Each change produces an event or change record.
 - **Read models** subscribe to those changes and maintain their own stores, each optimized for a specific query.

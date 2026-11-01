@@ -36,6 +36,8 @@ sequenceDiagram
 
 ## How it works
 
+<Animation name="split-brain-and-fencing" />
+
 ### Fencing tokens
 
 Every time the lock service grants leadership, it hands out a **monotonically increasing token**. The leader includes the token in every write. The storage system remembers the highest token it has seen and **rejects writes with a lower token**.

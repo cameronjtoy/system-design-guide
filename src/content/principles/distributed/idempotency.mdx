@@ -21,6 +21,8 @@ Retries and redeliveries mean every operation may run more than once. If running
 
 ## How it works
 
+<Animation name="idempotency" />
+
 ### Naturally idempotent operations
 
 - `SET balance = 100` is idempotent; `balance = balance + 10` is not.

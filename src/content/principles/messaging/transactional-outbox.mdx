@@ -26,6 +26,8 @@ If the process crashes between steps 1 and 2, the order exists but no one hears 
 
 ## How it works
 
+<Animation name="transactional-outbox" />
+
 1. In the **same database transaction** as the business change, insert the event into an `outbox` table.
 2. A separate **relay** reads new outbox rows and publishes them to the broker.
 3. After a successful publish, the relay marks the rows as sent (or deletes them).

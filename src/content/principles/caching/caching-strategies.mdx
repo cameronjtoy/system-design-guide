@@ -23,6 +23,8 @@ A cache keeps a copy of hot data in memory, where a lookup takes well under a mi
 
 ## How it works
 
+<Animation name="caching-strategies" />
+
 ### Cache-aside (lazy loading)
 
 The application owns the logic. On a read it checks the cache first; on a miss it reads the database and writes the result into the cache. On a write it updates the database and **deletes** the cache key.

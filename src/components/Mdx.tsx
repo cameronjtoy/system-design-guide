@@ -2,6 +2,7 @@ import { isValidElement, useLayoutEffect, useRef, type ComponentProps, type Reac
 import type { MDXComponents } from 'mdx/types'
 import { Link } from 'react-router'
 import { Mermaid } from './Mermaid'
+import { Animation } from './Animation'
 import styles from './Mdx.module.css'
 
 type CalloutKind = 'tip' | 'example' | 'warning' | 'interview' | 'note'
@@ -76,6 +77,7 @@ export const mdxComponents: MDXComponents = {
   a: Anchor,
   pre: Pre,
   table: Table,
+  Animation,
   Callout,
   Reveal,
 }
