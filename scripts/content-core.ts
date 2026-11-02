@@ -18,7 +18,7 @@ import {
   type Source,
 } from '../src/content/meta.ts'
 import { PATHS } from '../src/content/paths.ts'
-import { QUIZZES } from '../src/content/quizzes/index.ts'
+import { QUIZZES, SCENARIOS } from '../src/content/quizzes/index.ts'
 
 export interface Problem {
   file: string
@@ -319,6 +319,19 @@ export function loadContent(root: string): LoadResult {
       }
     })
   }
+  // "Which concept?" scenarios name principles as their answer and options.
+  SCENARIOS.forEach((sc, i) => {
+    const file = `/src/content/quizzes/scenarios.ts#${i + 1}`
+    const options = [sc.answer, ...sc.distractors]
+    for (const slug of options) {
+      if (!principleSlugs.has(slug)) problems.push({ file, message: `unknown principle "${slug}"`, level: 'error' })
+    }
+    if (new Set(options).size !== options.length) problems.push({ file, message: 'options repeat a principle', level: 'error' })
+    if (sc.distractors.length < 2 || sc.distractors.length > 4) {
+      problems.push({ file, message: 'needs 2–4 distractors', level: 'error' })
+    }
+    if (!sc.q.trim() || !sc.explain.trim()) problems.push({ file, message: 'needs a prompt and an explanation', level: 'error' })
+  })
   for (const e of entries) {
     if (e.collection === 'principles' && !QUIZZES[e.slug]?.length) {
       problems.push({ file: e.file, message: 'has no quiz questions in src/content/quizzes', level: 'warning' })

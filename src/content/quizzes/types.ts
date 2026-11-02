@@ -28,3 +28,15 @@ export type Question = ChoiceQuestion | NumberQuestion
 export type QuizBank = Record<string, Question[]>
 
 export const DEFAULT_TOLERANCE = 0.15
+
+/**
+ * A scenario where the reader picks which principle applies. Options and the
+ * answer are principle slugs; the app shows their titles.
+ */
+export interface ScenarioQuestion {
+  q: string
+  answer: string
+  /** Wrong options (principle slugs), usually 3. */
+  distractors: string[]
+  explain: string
+}

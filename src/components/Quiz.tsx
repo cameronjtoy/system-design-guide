@@ -61,7 +61,7 @@ export function QuestionCard({ item, label, onAnswered, lessonLink }: QuestionCa
     <div className={styles.card} data-state={result ? (result.correct ? 'correct' : 'wrong') : 'open'}>
       <div className={styles.cardHead}>
         {label && <span className={styles.label}>{label}</span>}
-        <span className={styles.kind}>{question.type === 'choice' ? 'Multiple choice' : 'Math'}</span>
+        <span className={styles.kind}>{item.concept ? 'Which concept?' : question.type === 'choice' ? 'Multiple choice' : 'Math'}</span>
       </div>
       <p className={styles.prompt}>{question.q}</p>
 

@@ -12,6 +12,8 @@ import aiInfra from './ai-infra.ts'
 import product from './product.ts'
 import dataDesign from './data-design.ts'
 
+export { SCENARIOS } from './scenarios.ts'
+
 export const QUIZZES: QuizBank = {
   ...foundations,
   ...scaling,
