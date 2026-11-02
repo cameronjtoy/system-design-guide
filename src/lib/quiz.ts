@@ -1,4 +1,10 @@
-import { DEFAULT_TOLERANCE, type NumberQuestion, type Question, type QuizBank } from '../content/quizzes/types'
+import {
+  DEFAULT_TOLERANCE,
+  type NumberQuestion,
+  type Question,
+  type QuizBank,
+  type ScenarioQuestion,
+} from '../content/quizzes/types'
 
 /** A question ready to show, with a stable id for stats. */
 export interface QuizItem {
@@ -7,20 +13,52 @@ export interface QuizItem {
   /** Principle the question belongs to, if any. */
   slug?: string
   category: string
+  /** "Which concept is this?" questions are labelled differently. */
+  concept?: boolean
 }
 
-let bankPromise: Promise<QuizBank> | undefined
+type QuizModule = typeof import('../content/quizzes/index.ts')
+let modulePromise: Promise<QuizModule> | undefined
 
 /** The question bank is large, so it loads on first use. */
+function loadQuizModule(): Promise<QuizModule> {
+  modulePromise ??= import('../content/quizzes/index.ts').catch((e) => {
+    modulePromise = undefined
+    throw e
+  })
+  return modulePromise
+}
+
 export function loadQuizBank(): Promise<QuizBank> {
-  bankPromise ??= import('../content/quizzes/index.ts').then(
-    (m) => m.QUIZZES,
-    (e) => {
-      bankPromise = undefined
-      throw e
-    },
-  )
-  return bankPromise
+  return loadQuizModule().then((m) => m.QUIZZES)
+}
+
+export function loadScenarios(): Promise<ScenarioQuestion[]> {
+  return loadQuizModule().then((m) => m.SCENARIOS)
+}
+
+/**
+ * Turns scenarios into multiple-choice items whose options are principle
+ * titles. `principle` looks up a slug's title and category.
+ */
+export function scenarioItems(
+  scenarios: ScenarioQuestion[],
+  principle: (slug: string) => { title: string; category: string } | undefined,
+): QuizItem[] {
+  return scenarios.flatMap((sc, i) => {
+    const answer = principle(sc.answer)
+    const options = [sc.answer, ...sc.distractors].map((slug) => principle(slug)?.title)
+    if (!answer || options.some((o) => o === undefined)) return []
+    return [
+      {
+        id: `scenario:${i}`,
+        question: { type: 'choice' as const, q: sc.q, options: options as string[], answer: 0, explain: sc.explain },
+        slug: sc.answer,
+        category: answer.category,
+        concept: true,
+      },
+    ]
+  })
 }
 
 export function itemsForPrinciple(bank: QuizBank, slug: string, category: string): QuizItem[] {

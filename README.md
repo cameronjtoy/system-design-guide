@@ -86,6 +86,8 @@ Recommended sections: *What happened*, *Root cause*, *What changed*, *Lessons*.
 
 Every principle ends with a short quiz. Questions live in `src/content/quizzes/<category>.ts`, keyed by principle slug. Each question is either multiple choice (`type: 'choice'`, `options`, `answer` as an index) or a math estimate (`type: 'number'`, `answer`, optional `unit` and `tolerance`, the allowed relative error, 15% by default). Every question needs an `explain` that shows the reasoning. Options are shuffled when displayed, so explanations shouldn't refer to their position. `check:content --strict` fails if a principle has no questions.
 
+“Which concept?” questions live in `src/content/quizzes/scenarios.ts`: a short real-world situation, the principle slug that answers it, 2–4 wrong principle slugs and an explanation. The app shows principle titles as options. Append new scenarios at the end, because a scenario's position is its id for saved results.
+
 Generated math drills, with new numbers on every attempt, are defined in `src/lib/mathDrills.ts`. Quick practice (`/#/quiz`) mixes both, and results are stored in this browser only.
 
 ### Animations

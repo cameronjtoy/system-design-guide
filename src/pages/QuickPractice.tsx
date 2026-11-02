@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 import { CATEGORIES } from '../content/meta'
-import type { QuizBank } from '../content/quizzes/types'
+import type { QuizBank, ScenarioQuestion } from '../content/quizzes/types'
 import { getPrinciple, entryPath } from '../lib/content'
-import { itemsForPrinciple, loadQuizBank, shuffle, type QuizItem } from '../lib/quiz'
+import { itemsForPrinciple, loadQuizBank, loadScenarios, scenarioItems, shuffle, type QuizItem } from '../lib/quiz'
 import { DRILLS, makeDrill } from '../lib/mathDrills'
 import { summarize, useQuizStats } from '../lib/quizStats'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
@@ -13,10 +13,11 @@ import indexStyles from './IndexPage.module.css'
 import quizStyles from '../components/Quiz.module.css'
 import styles from './QuickPractice.module.css'
 
-type Kind = 'mixed' | 'choice' | 'math'
+type Kind = 'mixed' | 'choice' | 'concepts' | 'math'
 const KINDS: { id: Kind; label: string }[] = [
   { id: 'mixed', label: 'Mixed' },
   { id: 'choice', label: 'Multiple choice' },
+  { id: 'concepts', label: 'Which concept?' },
   { id: 'math', label: 'Math' },
 ]
 const LENGTHS = [5, 10, 20]
@@ -28,6 +29,11 @@ interface Settings {
   missedOnly: boolean
 }
 
+interface Questions {
+  bank: QuizBank
+  scenarios: ScenarioQuestion[]
+}
+
 function allBankItems(bank: QuizBank): QuizItem[] {
   return Object.keys(bank).flatMap((slug) => {
     const category = getPrinciple(slug)?.category ?? 'foundations'
@@ -35,16 +41,23 @@ function allBankItems(bank: QuizBank): QuizItem[] {
   })
 }
 
+function allScenarioItems(scenarios: ScenarioQuestion[]): QuizItem[] {
+  return scenarioItems(scenarios, (slug) => getPrinciple(slug))
+}
+
 /** Picks a round of questions for the chosen settings. */
-function buildRound(bank: QuizBank, s: Settings, missed: ReadonlySet<string>): QuizItem[] {
+function buildRound({ bank, scenarios }: Questions, s: Settings, missed: ReadonlySet<string>): QuizItem[] {
   const inTopic = (category: string) => s.topic === '' || category === s.topic
   const drills = DRILLS.filter((d) => inTopic(d.category))
   const fresh = (n: number) =>
     drills.length ? Array.from({ length: n }, () => makeDrill(drills[Math.floor(Math.random() * drills.length)])) : []
 
+  const concepts = allScenarioItems(scenarios).filter((it) => inTopic(it.category))
   let pool = allBankItems(bank).filter((it) => inTopic(it.category))
   if (s.kind === 'choice') pool = pool.filter((it) => it.question.type === 'choice')
   if (s.kind === 'math') pool = pool.filter((it) => it.question.type === 'number')
+  if (s.kind === 'concepts') pool = concepts
+  if (s.kind === 'mixed') pool = [...pool, ...concepts]
 
   if (s.missedOnly) {
     const bankMissed = pool.filter((it) => missed.has(it.id))
@@ -83,7 +96,7 @@ function QuickPracticePage() {
   useDocumentTitle('Quick practice')
   const [params] = useSearchParams()
   const stats = useQuizStats()
-  const [bank, setBank] = useState<QuizBank | undefined>()
+  const [bank, setBank] = useState<Questions | undefined>()
   const [loadError, setLoadError] = useState(false)
   const [settings, setSettings] = useState<Settings>(() => ({
     topic: CATEGORIES.some((c) => c.id === params.get('topic')) ? params.get('topic')! : '',
@@ -94,7 +107,10 @@ function QuickPracticePage() {
   const [round, setRound] = useState<{ items: QuizItem[]; index: number; results: boolean[]; key: number }>()
 
   useEffect(() => {
-    loadQuizBank().then(setBank, () => setLoadError(true))
+    Promise.all([loadQuizBank(), loadScenarios()]).then(
+      ([b, scenarios]) => setBank({ bank: b, scenarios }),
+      () => setLoadError(true),
+    )
   }, [])
 
   const missed = new Set(Object.entries(stats).filter(([, s]) => !s.last).map(([id]) => id))
@@ -109,7 +125,7 @@ function QuickPracticePage() {
   }
 
   const topics = CATEGORIES.filter(
-    (c) => (bank && Object.keys(bank).some((slug) => getPrinciple(slug)?.category === c.id)) || DRILLS.some((d) => d.category === c.id),
+    (c) => (bank && Object.keys(bank.bank).some((slug) => getPrinciple(slug)?.category === c.id)) || DRILLS.some((d) => d.category === c.id),
   )
 
   // --- Playing a round -----------------------------------------------------
@@ -198,8 +214,9 @@ function QuickPracticePage() {
       <header className={indexStyles.header}>
         <h1>Quick practice</h1>
         <p>
-          Short rounds of multiple-choice and estimation questions drawn from every lesson. Math questions use fresh
-          numbers each time, and answers within about 15% count.
+          Short rounds of questions drawn from every lesson: multiple choice, “which concept?” scenarios where you
+          name the idea behind a real situation, and estimation math. Math questions use fresh numbers each time,
+          and answers within about 15% count.
         </p>
       </header>
 
