@@ -4,6 +4,7 @@ import type { MDXProps } from 'mdx/types'
 import type { CollectionId, Entry, Heading, Source } from '../content/meta'
 import { COLLECTIONS } from '../content/meta'
 import {
+  booksFor,
   caseStudiesFor,
   categoryLabel,
   entryId,
@@ -61,6 +62,7 @@ function footerSections(entry: Entry): Section[] {
     const failures = postmortemsFor(entry.slug)
     const stories = caseStudiesFor(entry.slug)
     const practice = practiceFor(entry.slug)
+    const bookNotes = booksFor(entry.slug)
     const related = relatedPrinciples(entry)
     sections.push({
       id: 'auto-quiz',
@@ -86,6 +88,13 @@ function footerSections(entry: Entry): Section[] {
         id: 'auto-practice',
         title: 'Practice problems',
         node: <CardGrid>{practice.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
+      })
+    }
+    if (bookNotes.length) {
+      sections.push({
+        id: 'auto-books',
+        title: 'From the books',
+        node: <CardGrid>{bookNotes.map((e) => <EntryCard key={e.slug} entry={e} />)}</CardGrid>,
       })
     }
     if (related.length) {
@@ -189,6 +198,16 @@ function EntryHeader({ entry, learned }: { entry: Entry; learned: boolean }) {
           <DifficultyTag level={entry.difficulty} />
           <Pill>{entry.readingMinutes} min read</Pill>
           <span className={styles.companies}>Try it yourself before opening the hints</span>
+        </div>
+      )}
+
+      {entry.collection === 'books' && (
+        <div className={styles.meta}>
+          <Pill>{entry.author}</Pill>
+          <Pill>
+            {entry.publisher}, {entry.year}
+          </Pill>
+          <Pill>{entry.readingMinutes} min read</Pill>
         </div>
       )}
 

@@ -1,0 +1,144 @@
+---
+title: "Building Resilient Distributed Systems"
+summary: Sam Newman's book on keeping distributed systems working when parts of them fail, covering timeouts, retries, thundering herds, machine and site failure, observability, AI, and the people and practices that make resilience last.
+author: Sam Newman
+publisher: O'Reilly
+year: 2026
+tags: [resilience, timeouts, retries, idempotency, observability, disaster-recovery, sociotechnical]
+principles: [timeouts-retries-and-backoff, idempotency, observability, backpressure-and-load-shedding, cache-stampede, backups-and-disaster-recovery, graceful-degradation, bulkheads, cell-based-architecture, static-stability, chaos-engineering, agent-systems]
+sources:
+  - title: Building Resilient Distributed Systems (Sam Newman's book page)
+    url: https://samnewman.io/books/building-resilient-distributed-systems/
+  - title: Building Resilient Distributed Systems (O'Reilly)
+    url: https://www.oreilly.com/library/view/building-resilient-distributed/9781098163532/
+  - title: "Chapter 1: What Is Resiliency? (O'Reilly preview)"
+    url: https://www.oreilly.com/library/view/building-resilient-distributed/9781098163532/ch01.html
+  - title: Timeouts, Retries and Idempotency in Distributed Systems (Sam Newman, QCon London 2025, InfoQ)
+    url: https://www.infoq.com/presentations/distributed-systems-resiliency/
+  - title: Building resilient systems with Sam Newman (The Pragmatic Engineer podcast)
+    url: https://newsletter.pragmaticengineer.com/p/building-resilient-systems-with-sam
+  - title: Building resilient systems (The Pragmatic Engineer, book excerpt)
+    url: https://newsletter.pragmaticengineer.com/p/building-resilient-systems
+  - title: Four concepts for resilience (David Woods, summarized by Resilience Roundup)
+    url: https://resilienceroundup.com/issues/four-concepts-for-resilience-and-the-implications-for-the-future-of-resilience-engineering/
+---
+
+<Callout type="note" title="About these notes">
+These notes are built only from material Sam Newman and his publishers have made public: his book page, the O'Reilly listing and preview, his QCon talk, a Pragmatic Engineer interview and book excerpt. They summarize the book's themes in this guide's own words and link each one to the lessons that go deeper. They are not a substitute for the book, and they leave out anything not available publicly. Chapter order differs between early-release and published listings, so the notes are organized by theme rather than chapter number.
+</Callout>
+
+## The book in brief
+
+Newman is best known for *Building Microservices*. This book is about what happens after you've split a system into networked parts: how to keep it working when some of those parts are slow, overloaded, broken or gone. The publicly listed topics run from mechanics (observability, thundering herds, machine failure, disaster recovery) to the human side (sociotechnical systems, and constant learning and adaptation), plus a chapter on the opportunities and risks of AI.
+
+The thread running through it: resilience isn't a feature you add once. It comes from the software, the people who run it, and how both keep adapting.
+
+## What "resilient" means
+
+The O'Reilly preview of Chapter 1 shows the book framing resiliency with **four concepts** from resilience engineering researcher David Woods. They're a useful vocabulary for the rest of this guide:
+
+| Concept | In short | Where this guide covers it |
+|---|---|---|
+| **Robustness** | Absorbing the problems you expected and designed for | [Timeouts and retries](/principles/timeouts-retries-and-backoff), [circuit breakers](/principles/circuit-breakers), [replication](/principles/replication) |
+| **Rebound** | Recovering after something has gone wrong | [Backups and disaster recovery](/principles/backups-and-disaster-recovery), [static stability](/principles/static-stability) |
+| **Graceful extensibility** | Coping with surprises you didn't plan for, by stretching rather than breaking | [Graceful degradation](/principles/graceful-degradation), [load shedding](/principles/backpressure-and-load-shedding) |
+| **Sustained adaptability** | Continuing to learn and adapt as conditions change over years | [Chaos engineering](/principles/chaos-engineering), [observability](/principles/observability) |
+
+<Callout type="tip" title="Why this framing matters">
+Most system design advice is about robustness: patterns for failures you can name in advance. Woods's other three concepts are about what happens when reality goes beyond your design, which is where real outages live. Newman's argument, as reported from his interview, is that those depend heavily on people, not just code.
+</Callout>
+
+## Key learnings
+
+### 1. Resilience is sociotechnical
+
+The book gives whole chapters to sociotechnical systems and to constant learning and adaptation. The point: an outage is handled by people using tools, under pressure, with incomplete information. How teams are organized, how they learn from incidents and whether they can change the system safely matter as much as any retry policy.
+
+**In this guide:** [Design docs and decision records](/principles/design-docs-and-decision-records), [chaos engineering](/principles/chaos-engineering), and the [postmortems](/postmortems) collection, which is a record of what teams learned.
+
+### 2. Wanting resilience isn't knowing you have it
+
+Newman's book page sums up the observability chapter as the gap between *wanting* a system to be resilient and *knowing* that it is. Without good telemetry you can't tell whether a fallback is working, a queue is growing, or a dependency is quietly getting slower.
+
+**In this guide:** [Observability](/principles/observability), [SLIs, SLOs and error budgets](/principles/slis-slos-and-error-budgets), [tail latency](/principles/tail-latency).
+
+### 3. Timeouts protect the system, not the request
+
+In his QCon London 2025 talk, Newman frames a timeout as choosing the health of the whole system over the success of one request. Waiting forever on a slow dependency ties up threads, connections and memory, and that's how one slow service drags down its callers.
+
+**In this guide:** [Timeouts, retries and backoff](/principles/timeouts-retries-and-backoff), [bulkheads](/principles/bulkheads), [circuit breakers](/principles/circuit-breakers).
+
+### 4. Retries need limits, jitter and idempotency
+
+The same talk warns that too many retries amount to a self-inflicted denial-of-service attack, and suggests limiting them and adding random delays so a struggling system can recover. It also stresses that retrying only makes sense when it's safe, which is what **idempotency** gives you: the interview discusses using idempotency keys so a repeated request isn't processed twice.
+
+**In this guide:** [Idempotency](/principles/idempotency), [exactly-once delivery](/principles/exactly-once-delivery), and the [retries animation](/principles/timeouts-retries-and-backoff).
+
+### 5. Most outages are something running out
+
+In his Pragmatic Engineer interview, Newman argues that most outages come down to some resource being saturated somewhere: CPU, memory, connections, threads, disk, a downstream quota. That's a practical starting point when debugging: find what ran out, and what made it run out.
+
+**In this guide:** [Backpressure and load shedding](/principles/backpressure-and-load-shedding), [rate limiting](/principles/rate-limiting), [autoscaling](/principles/autoscaling).
+
+### 6. Thundering herds have different causes and different fixes
+
+The book has a chapter on thundering herds, systems brought down by too much demand at once. The interview stresses that herds come from different causes, so there's no single fix. In this guide's terms, a few common herds and their remedies:
+
+| Herd | Typical cause | Remedy |
+|---|---|---|
+| Retry storm | Clients retrying together after a failure | Backoff with jitter, retry budgets |
+| Cache stampede | A hot key expires and everyone recomputes it | Request coalescing, TTL jitter |
+| Reconnect storm | Every client reconnects when a server restarts | Randomized reconnect delays, gradual admission |
+| Scheduled spikes | Jobs all set for the top of the hour | Spread schedules, queue the work |
+| Real demand | A launch, a sale, a news event | Capacity headroom, waiting rooms, load shedding |
+
+**In this guide:** [Cache stampede](/principles/cache-stampede), [timeouts, retries and backoff](/principles/timeouts-retries-and-backoff), [backpressure and load shedding](/principles/backpressure-and-load-shedding), [design a ticket booking system](/practice/design-ticket-booking).
+
+### 7. Stop one failure becoming many
+
+Newman's book page describes the machine-failure chapter as borrowing from **progressive collapse** in buildings, where the failure of one structural element brings down the rest, and asks how to prevent the same in distributed systems. Losing one server is routine; the danger is its load shifting to neighbors that then fail in turn.
+
+**In this guide:** [Bulkheads](/principles/bulkheads), [cell-based architecture](/principles/cell-based-architecture), [static stability](/principles/static-stability), and [the Kinesis outage](/postmortems/aws-kinesis-us-east-1-2020) as a real cascade.
+
+### 8. Plan for losing a whole site
+
+The disaster recovery chapter, excerpted in The Pragmatic Engineer, deals with losing an entire site (a data center or cloud region) to fire, flood, power problems or provider faults. It offers a model for defining DR requirements, and the excerpt makes the central trade-off clear: reducing acceptable downtime and data loss generally costs more money and complexity. The recovery approaches it covers range from backup-and-restore through pilot light and warm standby to active-active across sites.
+
+| Approach | Recovery time | Data loss | Cost and complexity |
+|---|---|---|---|
+| Backup and restore | Hours or more | Since the last backup | Lowest |
+| Pilot light (core data replicated, little else running) | Tens of minutes to hours | Small | Low |
+| Warm standby (a scaled-down copy running) | Minutes | Small | Medium |
+| Active-active (every site serving traffic) | Near zero | Near zero | Highest |
+
+The approach names are standard industry terms. The time ranges in the table are this guide's rough guide, not figures from the book.
+
+**In this guide:** [Backups and disaster recovery](/principles/backups-and-disaster-recovery) (RPO and RTO), [replication](/principles/replication), [static stability](/principles/static-stability), [Facebook's 2021 outage](/postmortems/facebook-bgp-dns-2021).
+
+### 9. Let the business decide how things fail
+
+The interview covers business context in resilience decisions, including when to **fail open** (keep working without a check) or **fail closed** (refuse to proceed). For example, a rate limiter that can't reach its store might fail open so customers aren't blocked, while a payments authorization check should fail closed. These are product and risk decisions, not purely technical ones.
+
+**In this guide:** [Requirements to system design](/principles/requirements-to-system-design), [designing failure states](/principles/designing-failure-states), [graceful degradation](/principles/graceful-degradation), [design a rate limiter](/practice/design-rate-limiter).
+
+### 10. AI cuts both ways
+
+Newman's book page describes a chapter on the opportunities and risks of AI, both in how we build and operate software and in products that embed AI. AI can help with operations work, but it also adds a new dependency that is slow, expensive and non-deterministic, and it can act in surprising ways.
+
+**In this guide:** [Agent systems](/principles/agent-systems), [LLM evals and guardrails](/principles/llm-evals-and-guardrails), [model routing](/principles/semantic-caching-and-model-routing), [design an AI agent platform](/practice/design-ai-agent-platform).
+
+## A reading path through this guide
+
+To study the book's themes here, work through them in this order:
+
+1. **Foundations:** [timeouts, retries and backoff](/principles/timeouts-retries-and-backoff), [idempotency](/principles/idempotency), [observability](/principles/observability).
+2. **Containing failure:** [circuit breakers](/principles/circuit-breakers), [bulkheads](/principles/bulkheads), [backpressure and load shedding](/principles/backpressure-and-load-shedding), [cache stampede](/principles/cache-stampede).
+3. **Limiting blast radius:** [cell-based architecture](/principles/cell-based-architecture), [static stability](/principles/static-stability), [progressive delivery](/principles/progressive-delivery).
+4. **Recovering:** [backups and disaster recovery](/principles/backups-and-disaster-recovery), [graceful degradation](/principles/graceful-degradation).
+5. **Learning:** [chaos engineering](/principles/chaos-engineering), then the [Reliability engineering path](/paths/reliability-engineering).
+
+## Interview angle
+
+<Callout type="interview">
+When you discuss failure handling, name which kind of resilience you're designing for: absorbing expected failures (timeouts, retries, replicas), recovering (backups, failover), or coping with the unexpected (degradation, load shedding). Say that retries need limits, jitter and idempotency, and that "fail open or fail closed" is a business decision.
+</Callout>

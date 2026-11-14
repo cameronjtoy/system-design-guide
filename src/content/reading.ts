@@ -255,6 +255,11 @@ export const READING: ReadingGroup[] = [
         url: 'https://pragprog.com/titles/mnee2/release-it-second-edition/',
         note: 'Stability patterns such as circuit breakers, bulkheads and timeouts, told through production war stories.',
       },
+      {
+        title: 'Building Resilient Distributed Systems (Sam Newman)',
+        url: 'https://samnewman.io/books/building-resilient-distributed-systems/',
+        note: 'Timeouts, retries, thundering herds, disaster recovery and the people side of resilience. See this guide’s book notes for a summary.',
+      },
     ],
   },
   {

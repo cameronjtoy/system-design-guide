@@ -3,6 +3,7 @@ import type { MDXProps } from 'mdx/types'
 import entries from 'virtual:content'
 import {
   CATEGORIES,
+  type BookEntry,
   type CaseStudyEntry,
   type CollectionId,
   type Entry,
@@ -42,6 +43,10 @@ export const postmortems: PostmortemEntry[] = entries
 export const caseStudies: CaseStudyEntry[] = entries
   .filter((e): e is CaseStudyEntry => e.collection === 'case-studies')
   .sort((a, b) => a.company.localeCompare(b.company) || a.title.localeCompare(b.title))
+
+export const books: BookEntry[] = entries
+  .filter((e): e is BookEntry => e.collection === 'books')
+  .sort((a, b) => b.year - a.year || a.title.localeCompare(b.title))
 
 export const practiceProblems: PracticeEntry[] = entries
   .filter((e): e is PracticeEntry => e.collection === 'practice')
@@ -100,6 +105,10 @@ export function postmortemsFor(slug: string): PostmortemEntry[] {
 
 export function caseStudiesFor(slug: string): CaseStudyEntry[] {
   return caseStudies.filter((cs) => cs.principles.includes(slug))
+}
+
+export function booksFor(slug: string): BookEntry[] {
+  return books.filter((b) => b.principles.includes(slug))
 }
 
 /** Previous and next principle in reading order. */

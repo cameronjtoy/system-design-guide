@@ -17,6 +17,8 @@ function eyebrow(entry: Entry): string {
       return `${entry.company} · ${entry.year}`
     case 'practice':
       return 'Practice problem'
+    case 'books':
+      return `${entry.author} · ${entry.year}`
   }
 }
 

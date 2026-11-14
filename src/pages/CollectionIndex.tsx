@@ -1,14 +1,14 @@
 import { COLLECTIONS } from '../content/meta'
-import { caseStudies, postmortems, practiceProblems } from '../lib/content'
+import { books, caseStudies, postmortems, practiceProblems } from '../lib/content'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { CardGrid, EntryCard } from '../components/EntryCard'
 import styles from './IndexPage.module.css'
 
 /** Index for the non-principle collections: postmortems, case studies and practice problems. */
-export function CollectionIndex({ collection }: { collection: 'postmortems' | 'case-studies' | 'practice' }) {
+export function CollectionIndex({ collection }: { collection: 'postmortems' | 'case-studies' | 'practice' | 'books' }) {
   const meta = COLLECTIONS.find((c) => c.id === collection)!
   useDocumentTitle(meta.label)
-  const items = { postmortems, 'case-studies': caseStudies, practice: practiceProblems }[collection]
+  const items = { postmortems, 'case-studies': caseStudies, practice: practiceProblems, books }[collection]
 
   return (
     <div className={styles.page}>
