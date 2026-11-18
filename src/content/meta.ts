@@ -1,7 +1,7 @@
 // Shared by the app and the build-time content tooling, so keep it free of
 // browser or Node specific imports.
 
-export type CollectionId = 'principles' | 'postmortems' | 'case-studies' | 'practice'
+export type CollectionId = 'principles' | 'postmortems' | 'case-studies' | 'practice' | 'books'
 
 export interface CollectionMeta {
   id: CollectionId
@@ -34,6 +34,12 @@ export const COLLECTIONS: CollectionMeta[] = [
     label: 'Practice problems',
     singular: 'Practice problem',
     description: 'Interview-style design problems with hints and a reference design.',
+  },
+  {
+    id: 'books',
+    label: 'Book notes',
+    singular: 'Book notes',
+    description: 'Key ideas from system design books, summarized and linked to the lessons they connect to.',
   },
 ]
 
@@ -163,7 +169,15 @@ export interface PracticeEntry extends BaseEntry {
   principles: string[]
 }
 
-export type Entry = PrincipleEntry | PostmortemEntry | CaseStudyEntry | PracticeEntry
+export interface BookEntry extends BaseEntry {
+  collection: 'books'
+  author: string
+  publisher: string
+  year: number
+  principles: string[]
+}
+
+export type Entry = PrincipleEntry | PostmortemEntry | CaseStudyEntry | PracticeEntry | BookEntry
 
 export interface SearchDoc {
   id: string

@@ -207,6 +207,20 @@ export function loadContent(root: string): LoadResult {
         order: typeof fm.order === 'number' ? fm.order : 999,
         principles: principles ?? [],
       }
+    } else if (collection === 'books') {
+      if (typeof fm.author !== 'string' || !fm.author) error('missing "author"')
+      if (typeof fm.publisher !== 'string' || !fm.publisher) error('missing "publisher"')
+      if (typeof fm.year !== 'number') error('missing numeric "year"')
+      const principles = asStringArray(fm.principles)
+      if (!principles || principles.length === 0) error('"principles" must list at least one principle slug')
+      entry = {
+        ...base,
+        collection,
+        author: String(fm.author ?? ''),
+        publisher: String(fm.publisher ?? ''),
+        year: typeof fm.year === 'number' ? fm.year : 0,
+        principles: principles ?? [],
+      }
     } else {
       if (typeof fm.company !== 'string' || !fm.company) error('missing "company"')
       const principles = asStringArray(fm.principles)
@@ -283,6 +297,8 @@ export function loadContent(root: string): LoadResult {
   }
 
   const known = new Set(entries.map((e) => `/${e.collection}/${e.slug}`))
+  // Learning paths are pages too, so lessons may link to them.
+  for (const path of PATHS) known.add(`/paths/${path.slug}`)
   for (const link of links) {
     if (!known.has(link.target)) {
       problems.push({ file: link.file, message: `links to missing page "${link.target}"`, level: 'warning' })

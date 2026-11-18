@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { CATEGORIES } from '../content/meta'
 import { PATHS, pathSteps } from '../content/paths'
-import { caseStudies, entryId, postmortems, practiceProblems, principles, principlesInCategory } from '../lib/content'
+import { books, caseStudies, entryId, postmortems, practiceProblems, principles, principlesInCategory } from '../lib/content'
 import { countLearned, resetProgress, useLearned } from '../lib/progress'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { resetQuizStats, summarize, useQuizStats } from '../lib/quizStats'
@@ -21,6 +21,7 @@ export function Progress() {
     { label: 'Postmortems', ids: postmortems.map(entryId), to: '/postmortems' },
     { label: 'Case studies', ids: caseStudies.map(entryId), to: '/case-studies' },
     { label: 'Practice problems', ids: practiceProblems.map(entryId), to: '/practice' },
+    { label: 'Book notes', ids: books.map(entryId), to: '/books' },
   ]
   const totalIds = groups.flatMap((g) => g.ids)
   const totalDone = countLearned(totalIds, learned)

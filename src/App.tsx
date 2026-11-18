@@ -27,6 +27,8 @@ export function App() {
           <Route path="case-studies/:slug" element={<EntryPage collection="case-studies" />} />
           <Route path="practice" element={<CollectionIndex collection="practice" />} />
           <Route path="practice/:slug" element={<EntryPage collection="practice" />} />
+          <Route path="books" element={<CollectionIndex collection="books" />} />
+          <Route path="books/:slug" element={<EntryPage collection="books" />} />
           <Route path="paths" element={<PathsIndex />} />
           <Route path="paths/:slug" element={<PathPage />} />
           <Route path="progress" element={<Progress />} />

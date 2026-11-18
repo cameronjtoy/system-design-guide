@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router'
 import { CATEGORIES, COLLECTIONS } from '../content/meta'
-import { caseStudies, getPrinciple, postmortems, practiceProblems, principlesInCategory } from '../lib/content'
+import { books, caseStudies, getPrinciple, postmortems, practiceProblems, principlesInCategory } from '../lib/content'
 import { useLearned } from '../lib/progress'
 import { CheckIcon, ChevronIcon } from './Icons'
 import styles from './Sidebar.module.css'
@@ -33,6 +33,7 @@ export function Sidebar() {
   const counts: Record<string, number> = {
     postmortems: postmortems.length,
     'case-studies': caseStudies.length,
+    books: books.length,
   }
 
   return (
@@ -106,7 +107,7 @@ export function Sidebar() {
 
       <div className={styles.section}>
         <div className={styles.label}>Real world</div>
-        {COLLECTIONS.filter((c) => c.id === 'postmortems' || c.id === 'case-studies').map((c) => (
+        {COLLECTIONS.filter((c) => c.id === 'postmortems' || c.id === 'case-studies' || c.id === 'books').map((c) => (
           <NavLink key={c.id} to={`/${c.id}`} className={linkClass}>
             <span>{c.label}</span>
             <span className={styles.count}>{counts[c.id]}</span>
